@@ -1,7 +1,9 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Menu, X, User, ShieldCheck } from "lucide-react";
+import { Menu, X, User, ShieldCheck, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { RoleSwitcher } from "@/components/RoleSwitcher";
+import { useRole } from "@/lib/roles";
 import logoImg from "@/assets/logo-university.png";
 
 const docenteItems = [
@@ -11,14 +13,18 @@ const docenteItems = [
   { label: "Soporte", to: "/soporte" as const },
 ];
 
-const adminItems = [
-  { label: "Panel administrativo", to: "/admin" as const },
+const coordinadorItems = [
+  { label: "Inicio", to: "/" as const },
+  { label: "Panel Administrativo", to: "/admin" as const, icon: ShieldCheck },
+  { label: "Soporte", to: "/soporte" as const },
 ];
 
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
-  const isAdmin = location.pathname.startsWith("/admin");
+  const { isCoordinador, isDocente } = useRole();
+
+  const navItems = isCoordinador ? coordinadorItems : docenteItems;
 
   return (
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b-2 border-primary/20 shadow-sm">
@@ -27,20 +33,7 @@ export function Header() {
         <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
           <span>Universidad Jaime Bausate y Meza — Uso interno institucional</span>
           <div className="hidden sm:flex items-center gap-4">
-            <Link
-              to="/consultar"
-              className={`flex items-center gap-1 transition-opacity ${!isAdmin ? "opacity-100 font-semibold" : "opacity-70 hover:opacity-100"}`}
-            >
-              <User className="h-3 w-3" />
-              Portal Docente
-            </Link>
-            <Link
-              to="/admin"
-              className={`flex items-center gap-1 transition-opacity ${isAdmin ? "opacity-100 font-semibold" : "opacity-70 hover:opacity-100"}`}
-            >
-              <ShieldCheck className="h-3 w-3" />
-              Administración
-            </Link>
+            <RoleSwitcher />
           </div>
         </div>
       </div>
@@ -63,41 +56,32 @@ export function Header() {
 
           {/* Desktop nav */}
           <nav className="hidden lg:flex items-center gap-1">
-            {docenteItems.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  location.pathname === item.to
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground/70 hover:text-primary hover:bg-primary/5"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
-            <div className="w-px h-6 bg-border mx-2" />
-            {adminItems.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                  location.pathname === item.to
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground/70 hover:text-primary hover:bg-primary/5"
-                }`}
-              >
-                <ShieldCheck className="h-3.5 w-3.5" />
-                {item.label}
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              const Icon = 'icon' in item ? item.icon : undefined;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                    location.pathname === item.to
+                      ? "bg-primary/10 text-primary"
+                      : "text-foreground/70 hover:text-primary hover:bg-primary/5"
+                  }`}
+                >
+                  {Icon && <Icon className="h-3.5 w-3.5" />}
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* CTA + mobile toggle */}
           <div className="flex items-center gap-3">
-            <Link to="/registrar" className="hidden md:inline-flex">
-              <Button variant="accent" size="sm">Nueva justificación</Button>
-            </Link>
+            {isDocente && (
+              <Link to="/registrar" className="hidden md:inline-flex">
+                <Button variant="accent" size="sm">Nueva justificación</Button>
+              </Link>
+            )}
             <button
               className="lg:hidden p-2 rounded-md text-foreground hover:bg-muted"
               onClick={() => setMobileOpen(!mobileOpen)}
@@ -112,11 +96,20 @@ export function Header() {
       {mobileOpen && (
         <div className="lg:hidden border-t bg-background">
           <div className="px-4 py-3 space-y-1">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2 flex items-center gap-1.5">
-              <User className="h-3 w-3" />
-              Portal Docente
+            {/* Role switcher mobile */}
+            <div className="flex justify-center pb-3 border-b mb-2">
+              <RoleSwitcher />
             </div>
-            {docenteItems.map((item) => (
+
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2 flex items-center gap-1.5">
+              {isDocente ? (
+                <><User className="h-3 w-3" /> Portal Docente</>
+              ) : (
+                <><ShieldCheck className="h-3 w-3" /> Panel de Coordinación</>
+              )}
+            </div>
+
+            {navItems.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
@@ -130,30 +123,14 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            <div className="border-t my-2" />
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2 flex items-center gap-1.5">
-              <ShieldCheck className="h-3 w-3" />
-              Administración
-            </div>
-            {adminItems.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => setMobileOpen(false)}
-                className={`block px-3 py-2.5 rounded-md text-base font-medium ${
-                  location.pathname === item.to
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground/70 hover:bg-muted"
-                }`}
-              >
-                {item.label}
+
+            {isDocente && (
+              <Link to="/registrar" onClick={() => setMobileOpen(false)}>
+                <Button variant="accent" size="sm" className="w-full mt-2">
+                  Nueva justificación
+                </Button>
               </Link>
-            ))}
-            <Link to="/registrar" onClick={() => setMobileOpen(false)}>
-              <Button variant="accent" size="sm" className="w-full mt-2">
-                Nueva justificación
-              </Button>
-            </Link>
+            )}
           </div>
         </div>
       )}
