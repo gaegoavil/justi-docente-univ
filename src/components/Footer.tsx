@@ -1,64 +1,49 @@
-import { Link } from "@tanstack/react-router";
-import logoImg from "@/assets/logo-university.png";
+import { Mail, Phone, MapPin } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="institutional-gradient text-institutional-foreground">
-      {/* Top section */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Logo & info */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <img src={logoImg} alt="Logo Universidad" className="h-12 w-12 object-contain" loading="lazy" />
-              <div>
-                <div className="font-bold font-[family-name:var(--font-heading)] text-lg">
-                  Universidad Jaime Bausate y Meza
-                </div>
-                <div className="text-sm opacity-80">
-                  Mesa de Ayuda – Justificaciones Docentes
-                </div>
-              </div>
-            </div>
-            <p className="text-sm opacity-70 leading-relaxed">
-              Plataforma institucional de uso interno para el registro y seguimiento de
-              justificaciones docentes. Sistema de gestión y control de incidencias académicas.
-            </p>
+    <footer>
+      {/* 3 institutional contact blocks */}
+      <div className="grid grid-cols-1 md:grid-cols-3">
+        {/* Email block - Red */}
+        <div className="bg-accent-red text-accent-red-foreground px-6 py-8 flex items-center justify-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-accent-red-foreground/15 flex items-center justify-center shrink-0">
+            <Mail className="h-7 w-7" />
           </div>
-
-          {/* Quick links */}
           <div>
-            <h3 className="font-bold text-sm uppercase tracking-wider mb-4 opacity-80">
-              Enlaces rápidos
-            </h3>
-            <ul className="space-y-2 text-sm">
-              <li><Link to="/" className="opacity-70 hover:opacity-100 transition-opacity">Inicio</Link></li>
-              <li><Link to="/registrar" className="opacity-70 hover:opacity-100 transition-opacity">Registrar justificación</Link></li>
-              <li><Link to="/consultar" className="opacity-70 hover:opacity-100 transition-opacity">Consultar estado</Link></li>
-              <li><Link to="/soporte" className="opacity-70 hover:opacity-100 transition-opacity">Soporte</Link></li>
-            </ul>
+            <div className="text-sm font-semibold uppercase tracking-wider opacity-80 mb-1">Correo institucional</div>
+            <div className="text-lg font-bold">bausate@bausate.edu.pe</div>
           </div>
+        </div>
 
-          {/* Contact */}
+        {/* Phone block - Blue */}
+        <div className="bg-primary text-primary-foreground px-6 py-8 flex items-center justify-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-primary-foreground/15 flex items-center justify-center shrink-0">
+            <Phone className="h-7 w-7" />
+          </div>
           <div>
-            <h3 className="font-bold text-sm uppercase tracking-wider mb-4 opacity-80">
-              Contacto de Coordinación
-            </h3>
-            <ul className="space-y-2 text-sm opacity-70">
-              <li>📧 coordinacion@bausate.edu.pe</li>
-              <li>📞 (01) 715-6600</li>
-              <li>📍 Jr. San Martín 540, Jesús María, Lima</li>
-              <li>🕐 Lunes a Viernes: 8:00 – 18:00</li>
-            </ul>
+            <div className="text-sm font-semibold uppercase tracking-wider opacity-80 mb-1">Charlemos</div>
+            <div className="text-lg font-bold">+51 (1) 319 3523</div>
+          </div>
+        </div>
+
+        {/* Location block - Dark */}
+        <div className="bg-institutional text-institutional-foreground px-6 py-8 flex items-center justify-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-institutional-foreground/15 flex items-center justify-center shrink-0">
+            <MapPin className="h-7 w-7" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold uppercase tracking-wider opacity-80 mb-1">Visítenos</div>
+            <div className="text-lg font-bold">Jirón Río de Janeiro 560, Jesús María</div>
           </div>
         </div>
       </div>
 
-      {/* Bottom */}
-      <div className="border-t border-institutional-foreground/10">
+      {/* Bottom copyright */}
+      <div className="bg-institutional-dark text-institutional-foreground">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center text-xs opacity-60">
           <span>© 2026 Universidad Jaime Bausate y Meza. Todos los derechos reservados.</span>
-          <span>Uso interno institucional</span>
+          <span>Mesa de Ayuda — Uso interno institucional</span>
         </div>
       </div>
     </footer>

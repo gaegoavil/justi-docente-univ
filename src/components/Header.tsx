@@ -1,10 +1,9 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Menu, X, User, ShieldCheck, HelpCircle } from "lucide-react";
+import { Menu, X, User, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { useRole } from "@/lib/roles";
-import logoImg from "@/assets/logo-university.png";
 
 const docenteItems = [
   { label: "Inicio", to: "/" as const },
@@ -31,7 +30,7 @@ export function Header() {
       {/* Top bar */}
       <div className="bg-institutional text-institutional-foreground text-xs py-1.5">
         <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
-          <span>Universidad Jaime Bausate y Meza — Uso interno institucional</span>
+          <span className="font-[family-name:var(--font-heading)] tracking-wide">Universidad Jaime Bausate y Meza — Uso interno institucional</span>
           <div className="hidden sm:flex items-center gap-4">
             <RoleSwitcher />
           </div>
@@ -41,9 +40,17 @@ export function Header() {
       {/* Main nav */}
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
+          {/* Logo — uses /public/logo-bausate.png as editable logo */}
           <Link to="/" className="flex items-center gap-3 shrink-0">
-            <img src={logoImg} alt="Logo Universidad" className="h-10 w-10 object-contain" />
+            <img
+              src="/logo-bausate.png"
+              alt="Logo Universidad Jaime Bausate y Meza"
+              className="h-11 w-11 object-contain"
+              onError={(e) => {
+                // Fallback: hide if not found
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
             <div className="hidden sm:block">
               <div className="text-sm font-bold text-primary leading-tight font-[family-name:var(--font-heading)]">
                 Mesa de Ayuda
@@ -96,7 +103,6 @@ export function Header() {
       {mobileOpen && (
         <div className="lg:hidden border-t bg-background">
           <div className="px-4 py-3 space-y-1">
-            {/* Role switcher mobile */}
             <div className="flex justify-center pb-3 border-b mb-2">
               <RoleSwitcher />
             </div>
