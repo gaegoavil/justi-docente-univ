@@ -74,15 +74,15 @@ function HomePage() {
           <img
             src="/hero-mesa-ayuda.jpg"
             alt="Campus Universidad Jaime Bausate y Meza"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover brightness-[0.2] saturate-[0.3]"
             width={1920}
             height={1080}
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = "none";
             }}
           />
-          <div className="absolute inset-0 bg-[hsl(var(--primary))]/75 mix-blend-multiply" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--primary))]/85 to-[hsl(var(--primary))]/60" />
+          <div className="absolute inset-0 bg-[hsl(var(--primary))]/93" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--primary))]/70 to-[hsl(var(--primary))]/97" />
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 py-20 w-full">
           <motion.div
