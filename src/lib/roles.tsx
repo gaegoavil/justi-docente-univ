@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 
 export type UserRole = "docente" | "coordinador";
 
@@ -18,14 +18,15 @@ interface RoleContextType {
 const RoleContext = createContext<RoleContextType | null>(null);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<UserRole | null>(() => {
-    if (typeof window === "undefined") return null;
-    return (sessionStorage.getItem("role") as UserRole) || null;
-  });
-  const [email, setEmail] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return sessionStorage.getItem("email") || null;
-  });
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storedRole = sessionStorage.getItem("role") as UserRole | null;
+    const storedEmail = sessionStorage.getItem("email");
+    if (storedRole) setRole(storedRole);
+    if (storedEmail) setEmail(storedEmail);
+  }, []);
 
   const loginAsDocente = (correo: string): string | null => {
     const trimmed = correo.trim().toLowerCase();

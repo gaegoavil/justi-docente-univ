@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
 import { useRole } from "@/lib/roles";
@@ -6,9 +6,14 @@ import {
   getEstadoLabel,
   getEstadoColor,
   getTipoLabel,
-  mockJustificaciones,
   type Justificacion,
 } from "@/lib/justificacion";
+import {
+  obtenerJustificacionesPorCorreo,
+  rowToJustificacion,
+} from "@/lib/supabase-service";
+import { isSupabaseConfigured } from "@/integrations/supabase/client";
+import { mockJustificaciones } from "@/lib/justificacion";
 import {
   FileText,
   Clock,
@@ -21,6 +26,7 @@ import {
   ChevronRight,
   Info,
   Inbox,
+  Loader2,
 } from "lucide-react";
 
 const estadoIcons: Record<string, React.ReactNode> = {
@@ -35,13 +41,38 @@ const estadoIcons: Record<string, React.ReactNode> = {
 export function DocenteHistorial() {
   const { email } = useRole();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [resultados, setResultados] = useState<Justificacion[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Auto-filter by session email
-  const resultados = mockJustificaciones.filter(
-    (j) => j.correo_institucional.toLowerCase() === (email || "").toLowerCase()
-  );
+  useEffect(() => {
+    async function cargar() {
+      setLoading(true);
+      if (isSupabaseConfigured() && email) {
+        const rows = await obtenerJustificacionesPorCorreo(email);
+        setResultados(rows.map(rowToJustificacion));
+      } else {
+        // Fallback mock
+        setResultados(
+          mockJustificaciones.filter(
+            (j) => j.correo_institucional.toLowerCase() === (email || "").toLowerCase()
+          )
+        );
+      }
+      setLoading(false);
+    }
+    cargar();
+  }, [email]);
 
   const selected = selectedId ? resultados.find((j) => j.id === selectedId) : null;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Cargando solicitudes...</span>
+      </div>
+    );
+  }
 
   if (selected) {
     return (
@@ -95,9 +126,11 @@ export function DocenteHistorial() {
                     <div key={i} className="flex items-center gap-3 bg-card rounded-lg px-4 py-3 border">
                       <FileText className="h-5 w-5 text-primary" />
                       <span className="text-foreground font-medium">{a.nombre}</span>
-                      <span className="text-muted-foreground text-sm">
-                        ({(a.tamano / 1024 / 1024).toFixed(2)} MB)
-                      </span>
+                      {a.url && (
+                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-primary text-sm hover:underline ml-auto">
+                          Ver archivo
+                        </a>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -134,7 +167,6 @@ export function DocenteHistorial() {
 
   return (
     <div className="space-y-8">
-      {/* Session info */}
       <div className="bg-primary/5 border-2 border-primary/20 rounded-xl p-5 flex items-center gap-4">
         <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
           <Inbox className="h-6 w-6 text-primary" />
@@ -149,7 +181,6 @@ export function DocenteHistorial() {
         </div>
       </div>
 
-      {/* Results */}
       {resultados.length > 0 ? (
         <div className="space-y-4">
           <h3 className="text-xl font-bold text-foreground">
@@ -208,7 +239,6 @@ export function DocenteHistorial() {
           </Link>
         </div>
       )}
-
     </div>
   );
 }
