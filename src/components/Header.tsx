@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Menu, X, User, ShieldCheck } from "lucide-react";
+import { Menu, X, User, ShieldCheck, BarChart3, FileText, Clock } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
@@ -13,9 +13,11 @@ const docenteItems = [
 ];
 
 const coordinadorItems = [
-  { label: "Inicio", to: "/" as const },
+  { label: "Inicio", to: "/" as const, icon: undefined },
   { label: "Panel Administrativo", to: "/admin" as const, icon: ShieldCheck },
-  { label: "Soporte", to: "/soporte" as const },
+  { label: "Solicitudes", to: "/solicitudes" as const, icon: FileText },
+  { label: "Reportes", to: "/reportes" as const, icon: BarChart3 },
+  { label: "Soporte", to: "/soporte" as const, icon: undefined },
 ];
 
 export function Header() {
@@ -40,23 +42,22 @@ export function Header() {
       {/* Main nav */}
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo — uses /public/logo-bausate.png as editable logo */}
+          {/* Logo */}
           <Link to="/" className="flex items-center gap-3 shrink-0">
             <img
               src="/logo-bausate.png"
               alt="Logo Universidad Jaime Bausate y Meza"
               className="h-11 w-11 object-contain"
               onError={(e) => {
-                // Fallback: hide if not found
                 (e.target as HTMLImageElement).style.display = "none";
               }}
             />
             <div className="hidden sm:block">
               <div className="text-sm font-bold text-primary leading-tight font-[family-name:var(--font-heading)]">
-                Mesa de Ayuda
+                {isCoordinador ? "Panel de Gestión" : "Mesa de Ayuda"}
               </div>
               <div className="text-xs text-muted-foreground leading-tight">
-                Justificaciones Docentes
+                {isCoordinador ? "Coordinación Académica" : "Justificaciones Docentes"}
               </div>
             </div>
           </Link>
@@ -87,6 +88,14 @@ export function Header() {
             {isDocente && (
               <Link to="/registrar" className="hidden md:inline-flex">
                 <Button variant="accent" size="sm">Nueva justificación</Button>
+              </Link>
+            )}
+            {isCoordinador && (
+              <Link to="/solicitudes" className="hidden md:inline-flex">
+                <Button variant="accent" size="sm">
+                  <Clock className="h-4 w-4" />
+                  Revisar pendientes
+                </Button>
               </Link>
             )}
             <button
@@ -134,6 +143,14 @@ export function Header() {
               <Link to="/registrar" onClick={() => setMobileOpen(false)}>
                 <Button variant="accent" size="sm" className="w-full mt-2">
                   Nueva justificación
+                </Button>
+              </Link>
+            )}
+            {isCoordinador && (
+              <Link to="/solicitudes" onClick={() => setMobileOpen(false)}>
+                <Button variant="accent" size="sm" className="w-full mt-2">
+                  <Clock className="h-4 w-4" />
+                  Revisar pendientes
                 </Button>
               </Link>
             )}
