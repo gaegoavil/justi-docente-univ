@@ -1,51 +1,229 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getEstadoLabel, getEstadoColor, getTipoLabel, type Justificacion, type EstadoJustificacion } from "@/lib/justificacion";
-import { Search, FileText, Eye, Clock, Users, CheckCircle, AlertTriangle, XCircle, BarChart3, Download } from "lucide-react";
-
-const mockJustificaciones: Partial<Justificacion>[] = [
-  { id: "1", codigo_seguimiento: "JD-A1B2C3-XY01", nombre_completo: "María García López", tipo_justificacion: "inasistencia", estado: "pendiente", fecha_registro: "2026-04-12T10:00:00", curso_asignatura: "Periodismo Digital I", facultad_area: "Periodismo" },
-  { id: "2", codigo_seguimiento: "JD-D4E5F6-ZZ02", nombre_completo: "Carlos Rodríguez M.", tipo_justificacion: "tardanza", estado: "en_revision", fecha_registro: "2026-04-11T09:30:00", curso_asignatura: "Comunicación Social II", facultad_area: "Comunicaciones" },
-  { id: "3", codigo_seguimiento: "JD-G7H8I9-WW03", nombre_completo: "Ana Martínez Soto", tipo_justificacion: "permiso", estado: "aprobada", fecha_registro: "2026-04-10T14:00:00", curso_asignatura: "Ética Periodística", facultad_area: "Periodismo" },
-  { id: "4", codigo_seguimiento: "JD-J0K1L2-VV04", nombre_completo: "Pedro Sánchez Q.", tipo_justificacion: "reprogramacion", estado: "observada", fecha_registro: "2026-04-09T16:00:00", curso_asignatura: "Fotografía Periodística", facultad_area: "Periodismo" },
-  { id: "5", codigo_seguimiento: "JD-M3N4O5-UU05", nombre_completo: "Laura Díaz Flores", tipo_justificacion: "incumplimiento", estado: "rechazada", fecha_registro: "2026-04-08T11:00:00", curso_asignatura: "Redacción Periodística", facultad_area: "Periodismo" },
-];
+import {
+  getEstadoLabel,
+  getEstadoColor,
+  getTipoLabel,
+  mockJustificaciones,
+  type Justificacion,
+  type EstadoJustificacion,
+} from "@/lib/justificacion";
+import {
+  Search,
+  FileText,
+  Eye,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  BarChart3,
+  Download,
+  ArrowLeft,
+  RefreshCw,
+  Calendar,
+  Save,
+} from "lucide-react";
 
 const estadoIcons: Record<string, React.ReactNode> = {
-  pendiente: <Clock className="h-5 w-5" />,
-  en_revision: <Eye className="h-5 w-5" />,
-  aprobada: <CheckCircle className="h-5 w-5" />,
-  observada: <AlertTriangle className="h-5 w-5" />,
-  rechazada: <XCircle className="h-5 w-5" />,
+  pendiente: <Clock className="h-4 w-4" />,
+  en_revision: <Eye className="h-4 w-4" />,
+  aprobada: <CheckCircle className="h-4 w-4" />,
+  observada: <AlertTriangle className="h-4 w-4" />,
+  rechazada: <XCircle className="h-4 w-4" />,
+  subsanada: <RefreshCw className="h-4 w-4" />,
 };
 
 export function AdminDashboard() {
+  const [data, setData] = useState<Justificacion[]>([...mockJustificaciones]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState<string>("todos");
+  const [filterTipo, setFilterTipo] = useState<string>("todos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [nuevoEstado, setNuevoEstado] = useState<string>("");
+  const [nuevaObservacion, setNuevaObservacion] = useState("");
 
   const stats = {
-    total: mockJustificaciones.length,
-    pendiente: mockJustificaciones.filter((j) => j.estado === "pendiente").length,
-    en_revision: mockJustificaciones.filter((j) => j.estado === "en_revision").length,
-    aprobada: mockJustificaciones.filter((j) => j.estado === "aprobada").length,
-    observada: mockJustificaciones.filter((j) => j.estado === "observada").length,
-    rechazada: mockJustificaciones.filter((j) => j.estado === "rechazada").length,
+    total: data.length,
+    pendiente: data.filter((j) => j.estado === "pendiente").length,
+    en_revision: data.filter((j) => j.estado === "en_revision").length,
+    aprobada: data.filter((j) => j.estado === "aprobada").length,
+    observada: data.filter((j) => j.estado === "observada").length,
+    rechazada: data.filter((j) => j.estado === "rechazada").length,
+    subsanada: data.filter((j) => j.estado === "subsanada").length,
   };
 
-  const filtered = mockJustificaciones.filter((j) => {
+  const filtered = data.filter((j) => {
+    const s = searchTerm.toLowerCase();
     const matchSearch =
       !searchTerm ||
-      j.nombre_completo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      j.codigo_seguimiento?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      j.curso_asignatura?.toLowerCase().includes(searchTerm.toLowerCase());
+      j.nombre_completo.toLowerCase().includes(s) ||
+      j.codigo_seguimiento.toLowerCase().includes(s) ||
+      j.curso_asignatura.toLowerCase().includes(s) ||
+      j.correo_institucional.toLowerCase().includes(s) ||
+      j.dni_codigo_docente.toLowerCase().includes(s);
     const matchEstado = filterEstado === "todos" || j.estado === filterEstado;
-    return matchSearch && matchEstado;
+    const matchTipo = filterTipo === "todos" || j.tipo_justificacion === filterTipo;
+    return matchSearch && matchEstado && matchTipo;
   });
 
-  const selected = selectedId ? mockJustificaciones.find((j) => j.id === selectedId) : null;
+  const selected = selectedId ? data.find((j) => j.id === selectedId) : null;
+
+  const handleSaveChanges = () => {
+    if (!selected) return;
+    setData((prev) =>
+      prev.map((j) =>
+        j.id === selected.id
+          ? {
+              ...j,
+              estado: (nuevoEstado || j.estado) as EstadoJustificacion,
+              observaciones_admin: nuevaObservacion || j.observaciones_admin,
+              fecha_revision: new Date().toISOString(),
+            }
+          : j
+      )
+    );
+    setSelectedId(null);
+    setNuevoEstado("");
+    setNuevaObservacion("");
+  };
+
+  if (selected) {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => { setSelectedId(null); setNuevoEstado(""); setNuevaObservacion(""); }}
+          className="flex items-center gap-2 text-primary font-semibold hover:underline"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver al listado
+        </button>
+
+        <div className="bg-card rounded-xl border shadow-sm p-6 md:p-8">
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-foreground">Detalle de solicitud</h3>
+              <p className="text-sm text-muted-foreground font-mono">{selected.codigo_seguimiento}</p>
+            </div>
+            <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-full border ${getEstadoColor(selected.estado)}`}>
+              {estadoIcons[selected.estado]}
+              {getEstadoLabel(selected.estado)}
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 text-sm mb-6">
+            <Detail label="Docente" value={selected.nombre_completo} />
+            <Detail label="DNI / Código" value={selected.dni_codigo_docente} />
+            <Detail label="Correo" value={selected.correo_institucional} />
+            <Detail label="Celular" value={selected.celular} />
+            <Detail label="Facultad" value={selected.facultad_area} />
+            <Detail label="Curso" value={selected.curso_asignatura} />
+            <Detail label="Tipo" value={getTipoLabel(selected.tipo_justificacion)} />
+            <Detail label="Fecha incidencia" value={new Date(selected.fecha_incidencia).toLocaleDateString("es-PE")} />
+            <Detail label="Hora" value={selected.hora_incidencia} />
+            <Detail label="Turno" value={selected.turno} capitalize />
+            <Detail label="Modalidad" value={selected.modalidad} capitalize />
+            <Detail label="Sede/Aula" value={selected.sede_aula_enlace || "—"} />
+            {selected.cantidad_estudiantes_afectados && (
+              <Detail label="Estudiantes afectados" value={String(selected.cantidad_estudiantes_afectados)} />
+            )}
+            <Detail label="Fecha registro" value={new Date(selected.fecha_registro).toLocaleDateString("es-PE")} />
+            {selected.fecha_revision && (
+              <Detail label="Fecha revisión" value={new Date(selected.fecha_revision).toLocaleDateString("es-PE")} />
+            )}
+          </div>
+
+          <div className="space-y-4 mb-6">
+            <div className="bg-surface rounded-lg p-4 border">
+              <h4 className="font-semibold text-foreground mb-1">Descripción</h4>
+              <p className="text-sm text-foreground/80 font-[family-name:var(--font-body)]">{selected.descripcion}</p>
+            </div>
+            <div className="bg-surface rounded-lg p-4 border">
+              <h4 className="font-semibold text-foreground mb-1">Motivo principal</h4>
+              <p className="text-sm text-foreground/80 font-[family-name:var(--font-body)]">{selected.motivo_principal}</p>
+            </div>
+            {selected.impacto_academico && (
+              <div className="bg-surface rounded-lg p-4 border">
+                <h4 className="font-semibold text-foreground mb-1">Impacto académico</h4>
+                <p className="text-sm text-foreground/80 font-[family-name:var(--font-body)]">{selected.impacto_academico}</p>
+              </div>
+            )}
+            {selected.accion_correctiva && (
+              <div className="bg-surface rounded-lg p-4 border">
+                <h4 className="font-semibold text-foreground mb-1">Acción correctiva</h4>
+                <p className="text-sm text-foreground/80 font-[family-name:var(--font-body)]">{selected.accion_correctiva}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Archivos */}
+          {selected.archivos_adjuntos.length > 0 && (
+            <div className="mb-6">
+              <h4 className="font-semibold text-foreground mb-2">Archivos adjuntos</h4>
+              <div className="space-y-2">
+                {selected.archivos_adjuntos.map((a, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-surface rounded-lg px-4 py-2 border text-sm">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <span className="font-medium">{a.nombre}</span>
+                    <span className="text-muted-foreground">({(a.tamano / 1024 / 1024).toFixed(2)} MB)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {selected.observaciones_admin && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6">
+              <h4 className="font-semibold text-foreground mb-1">Observaciones anteriores</h4>
+              <p className="text-sm text-foreground/80 font-[family-name:var(--font-body)]">{selected.observaciones_admin}</p>
+            </div>
+          )}
+
+          {/* Admin actions */}
+          <div className="border-t pt-6 space-y-4">
+            <h4 className="font-bold text-foreground text-lg">Acciones administrativas</h4>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label className="font-semibold">Cambiar estado</Label>
+                <Select value={nuevoEstado} onValueChange={setNuevoEstado}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Seleccionar nuevo estado" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendiente">Pendiente</SelectItem>
+                    <SelectItem value="en_revision">En revisión</SelectItem>
+                    <SelectItem value="aprobada">Aprobada</SelectItem>
+                    <SelectItem value="observada">Observada</SelectItem>
+                    <SelectItem value="rechazada">Rechazada</SelectItem>
+                    <SelectItem value="subsanada">Subsanada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="font-semibold">Fecha de revisión</Label>
+                <Input type="date" className="mt-1" defaultValue={new Date().toISOString().split("T")[0]} />
+              </div>
+            </div>
+            <div>
+              <Label className="font-semibold">Agregar observación</Label>
+              <Textarea
+                rows={3}
+                className="mt-1"
+                value={nuevaObservacion}
+                onChange={(e) => setNuevaObservacion(e.target.value)}
+                placeholder="Escriba sus observaciones sobre esta solicitud..."
+              />
+            </div>
+            <Button onClick={handleSaveChanges} size="lg">
+              <Save className="h-4 w-4" />
+              Guardar cambios
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -63,7 +241,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {[
           { label: "Total", value: stats.total, icon: BarChart3, color: "bg-primary/10 text-primary" },
           { label: "Pendientes", value: stats.pendiente, icon: Clock, color: "bg-yellow-100 text-yellow-700" },
@@ -71,12 +249,13 @@ export function AdminDashboard() {
           { label: "Aprobadas", value: stats.aprobada, icon: CheckCircle, color: "bg-green-100 text-green-700" },
           { label: "Observadas", value: stats.observada, icon: AlertTriangle, color: "bg-orange-100 text-orange-700" },
           { label: "Rechazadas", value: stats.rechazada, icon: XCircle, color: "bg-red-100 text-red-700" },
+          { label: "Subsanadas", value: stats.subsanada, icon: RefreshCw, color: "bg-teal-100 text-teal-700" },
         ].map((s) => (
-          <div key={s.label} className="bg-card rounded-xl border p-4 shadow-sm">
-            <div className={`w-9 h-9 rounded-lg ${s.color} flex items-center justify-center mb-2`}>
+          <div key={s.label} className="bg-card rounded-xl border p-3 shadow-sm">
+            <div className={`w-8 h-8 rounded-lg ${s.color} flex items-center justify-center mb-2`}>
               <s.icon className="h-4 w-4" />
             </div>
-            <div className="text-2xl font-bold text-foreground">{s.value}</div>
+            <div className="text-xl font-bold text-foreground">{s.value}</div>
             <div className="text-xs text-muted-foreground">{s.label}</div>
           </div>
         ))}
@@ -88,14 +267,14 @@ export function AdminDashboard() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nombre, código o curso..."
+              placeholder="Buscar por nombre, código, correo, DNI o curso..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
         </div>
-        <div className="w-48">
+        <div className="w-44">
           <Select value={filterEstado} onValueChange={setFilterEstado}>
             <SelectTrigger><SelectValue placeholder="Estado" /></SelectTrigger>
             <SelectContent>
@@ -105,6 +284,21 @@ export function AdminDashboard() {
               <SelectItem value="aprobada">Aprobada</SelectItem>
               <SelectItem value="observada">Observada</SelectItem>
               <SelectItem value="rechazada">Rechazada</SelectItem>
+              <SelectItem value="subsanada">Subsanada</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-44">
+          <Select value={filterTipo} onValueChange={setFilterTipo}>
+            <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos los tipos</SelectItem>
+              <SelectItem value="tardanza">Tardanza</SelectItem>
+              <SelectItem value="inasistencia">Inasistencia</SelectItem>
+              <SelectItem value="incumplimiento">Incumplimiento</SelectItem>
+              <SelectItem value="permiso">Permiso</SelectItem>
+              <SelectItem value="reprogramacion">Reprogramación</SelectItem>
+              <SelectItem value="otro">Otro</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -129,21 +323,25 @@ export function AdminDashboard() {
               {filtered.map((j) => (
                 <tr key={j.id} className="border-b hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs text-primary font-bold">{j.codigo_seguimiento}</td>
-                  <td className="px-4 py-3 font-medium">{j.nombre_completo}</td>
-                  <td className="px-4 py-3 hidden md:table-cell capitalize">{getTipoLabel(j.tipo_justificacion!)}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-medium">{j.nombre_completo}</div>
+                    <div className="text-xs text-muted-foreground">{j.correo_institucional}</div>
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell capitalize">{getTipoLabel(j.tipo_justificacion)}</td>
                   <td className="px-4 py-3 hidden lg:table-cell text-muted-foreground">{j.curso_asignatura}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${getEstadoColor(j.estado!)}`}>
-                      {estadoIcons[j.estado!]}
-                      <span className="hidden sm:inline">{getEstadoLabel(j.estado!)}</span>
+                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${getEstadoColor(j.estado)}`}>
+                      {estadoIcons[j.estado]}
+                      <span className="hidden sm:inline">{getEstadoLabel(j.estado)}</span>
                     </span>
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">
-                    {new Date(j.fecha_registro!).toLocaleDateString("es-PE")}
+                    {new Date(j.fecha_registro).toLocaleDateString("es-PE")}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedId(j.id!)}>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedId(j.id)}>
                       <Eye className="h-4 w-4" />
+                      Ver
                     </Button>
                   </td>
                 </tr>
@@ -161,40 +359,18 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* Detail modal/panel */}
-      {selected && (
-        <div className="bg-card rounded-xl border shadow-sm p-6 md:p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-foreground">Detalle de solicitud</h3>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>Cerrar</Button>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 text-sm">
-            <div><span className="text-muted-foreground">Código:</span> <span className="font-mono font-bold text-primary ml-2">{selected.codigo_seguimiento}</span></div>
-            <div><span className="text-muted-foreground">Docente:</span> <span className="font-medium ml-2">{selected.nombre_completo}</span></div>
-            <div><span className="text-muted-foreground">Tipo:</span> <span className="font-medium ml-2 capitalize">{getTipoLabel(selected.tipo_justificacion!)}</span></div>
-            <div><span className="text-muted-foreground">Curso:</span> <span className="font-medium ml-2">{selected.curso_asignatura}</span></div>
-            <div><span className="text-muted-foreground">Facultad:</span> <span className="font-medium ml-2">{selected.facultad_area}</span></div>
-            <div><span className="text-muted-foreground">Estado:</span> <span className={`ml-2 inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${getEstadoColor(selected.estado!)}`}>{getEstadoLabel(selected.estado!)}</span></div>
-          </div>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Select>
-              <SelectTrigger className="w-48"><SelectValue placeholder="Cambiar estado" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pendiente">Pendiente</SelectItem>
-                <SelectItem value="en_revision">En revisión</SelectItem>
-                <SelectItem value="aprobada">Aprobada</SelectItem>
-                <SelectItem value="observada">Observada</SelectItem>
-                <SelectItem value="rechazada">Rechazada</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button size="sm">Guardar cambios</Button>
-          </div>
-        </div>
-      )}
-
       <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-sm text-muted-foreground font-[family-name:var(--font-body)]">
         <strong className="text-foreground">Nota:</strong> Este panel muestra datos de demostración. Al conectar con Lovable Cloud, los registros serán reales y persistentes.
       </div>
+    </div>
+  );
+}
+
+function Detail({ label, value, capitalize: cap }: { label: string; value: string; capitalize?: boolean }) {
+  return (
+    <div className="bg-surface rounded-lg p-3 border">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`text-sm font-medium text-foreground ${cap ? "capitalize" : ""}`}>{value}</div>
     </div>
   );
 }

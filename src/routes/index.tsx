@@ -35,7 +35,7 @@ const features = [
   {
     icon: Search,
     title: "Seguimiento de solicitudes",
-    description: "Consulte el estado de su justificación en tiempo real con su código de seguimiento.",
+    description: "Consulte el estado de todas sus justificaciones con su correo institucional.",
   },
   {
     icon: CheckCircle,
@@ -59,7 +59,7 @@ const faqs = [
   },
   {
     q: "¿Cómo consulto el estado de mi justificación?",
-    a: "Ingrese a la sección 'Consultar estado' e introduzca su código de seguimiento o DNI para ver la información actualizada de su solicitud.",
+    a: "Ingrese a la sección 'Mis solicitudes' con su correo institucional para ver el estado actualizado de todas sus justificaciones.",
   },
 ];
 
