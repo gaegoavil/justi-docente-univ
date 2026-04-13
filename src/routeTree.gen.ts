@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SoporteRouteImport } from './routes/soporte'
+import { Route as SolicitudesRouteImport } from './routes/solicitudes'
+import { Route as ReportesRouteImport } from './routes/reportes'
 import { Route as RegistrarRouteImport } from './routes/registrar'
 import { Route as ConsultarRouteImport } from './routes/consultar'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -18,6 +20,16 @@ import { Route as IndexRouteImport } from './routes/index'
 const SoporteRoute = SoporteRouteImport.update({
   id: '/soporte',
   path: '/soporte',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SolicitudesRoute = SolicitudesRouteImport.update({
+  id: '/solicitudes',
+  path: '/solicitudes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportesRoute = ReportesRouteImport.update({
+  id: '/reportes',
+  path: '/reportes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegistrarRoute = RegistrarRouteImport.update({
@@ -46,6 +58,8 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/consultar': typeof ConsultarRoute
   '/registrar': typeof RegistrarRoute
+  '/reportes': typeof ReportesRoute
+  '/solicitudes': typeof SolicitudesRoute
   '/soporte': typeof SoporteRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +67,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/consultar': typeof ConsultarRoute
   '/registrar': typeof RegistrarRoute
+  '/reportes': typeof ReportesRoute
+  '/solicitudes': typeof SolicitudesRoute
   '/soporte': typeof SoporteRoute
 }
 export interface FileRoutesById {
@@ -61,14 +77,38 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/consultar': typeof ConsultarRoute
   '/registrar': typeof RegistrarRoute
+  '/reportes': typeof ReportesRoute
+  '/solicitudes': typeof SolicitudesRoute
   '/soporte': typeof SoporteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/consultar' | '/registrar' | '/soporte'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/consultar'
+    | '/registrar'
+    | '/reportes'
+    | '/solicitudes'
+    | '/soporte'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/consultar' | '/registrar' | '/soporte'
-  id: '__root__' | '/' | '/admin' | '/consultar' | '/registrar' | '/soporte'
+  to:
+    | '/'
+    | '/admin'
+    | '/consultar'
+    | '/registrar'
+    | '/reportes'
+    | '/solicitudes'
+    | '/soporte'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/consultar'
+    | '/registrar'
+    | '/reportes'
+    | '/solicitudes'
+    | '/soporte'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,6 +116,8 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ConsultarRoute: typeof ConsultarRoute
   RegistrarRoute: typeof RegistrarRoute
+  ReportesRoute: typeof ReportesRoute
+  SolicitudesRoute: typeof SolicitudesRoute
   SoporteRoute: typeof SoporteRoute
 }
 
@@ -86,6 +128,20 @@ declare module '@tanstack/react-router' {
       path: '/soporte'
       fullPath: '/soporte'
       preLoaderRoute: typeof SoporteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/solicitudes': {
+      id: '/solicitudes'
+      path: '/solicitudes'
+      fullPath: '/solicitudes'
+      preLoaderRoute: typeof SolicitudesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reportes': {
+      id: '/reportes'
+      path: '/reportes'
+      fullPath: '/reportes'
+      preLoaderRoute: typeof ReportesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/registrar': {
@@ -124,6 +180,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ConsultarRoute: ConsultarRoute,
   RegistrarRoute: RegistrarRoute,
+  ReportesRoute: ReportesRoute,
+  SolicitudesRoute: SolicitudesRoute,
   SoporteRoute: SoporteRoute,
 }
 export const routeTree = rootRouteImport

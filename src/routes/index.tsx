@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { FileText, Upload, Search, CheckCircle, Clock, Shield, BookOpen, HelpCircle, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { useRole } from "@/lib/roles";
+import { AdminHome } from "@/components/AdminHome";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -63,6 +65,18 @@ const faqs = [
 
 function HomePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const { isCoordinador } = useRole();
+
+  // Coordinador ve interfaz administrativa completamente diferente
+  if (isCoordinador) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <AdminHome />
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
