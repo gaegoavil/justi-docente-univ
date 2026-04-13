@@ -3,7 +3,7 @@ import type {
   JustificacionRow,
   JustificacionInsert,
   EstadoJustificacion,
-} from "@/integrations/supabase/types";
+} from "@/lib/supabase-types";
 import { mockJustificaciones, type Justificacion } from "@/lib/justificacion";
 
 // ─── Código de seguimiento ──────────────────────────────────
@@ -37,7 +37,7 @@ export async function crearJustificacion(
 
   const { data: row, error } = await supabase
     .from("justificaciones_docentes")
-    .insert(data)
+    .insert(data as any)
     .select()
     .single();
 
@@ -45,7 +45,7 @@ export async function crearJustificacion(
     console.error("Error al crear justificación:", error);
     return { data: null, error: error.message };
   }
-  return { data: row, error: null };
+  return { data: row as JustificacionRow, error: null };
 }
 
 // ─── Obtener justificaciones por correo ─────────────────────
@@ -53,7 +53,6 @@ export async function obtenerJustificacionesPorCorreo(
   correo: string
 ): Promise<JustificacionRow[]> {
   if (!isSupabaseConfigured()) {
-    // Fallback mock
     return mockJustificaciones.filter(
       (j) => j.correo_institucional.toLowerCase() === correo.toLowerCase()
     ) as unknown as JustificacionRow[];
@@ -69,7 +68,7 @@ export async function obtenerJustificacionesPorCorreo(
     console.error("Error al obtener justificaciones:", error);
     return [];
   }
-  return data || [];
+  return (data || []) as JustificacionRow[];
 }
 
 // ─── Obtener todas (coordinador) ────────────────────────────
@@ -87,7 +86,7 @@ export async function obtenerTodasJustificaciones(): Promise<JustificacionRow[]>
     console.error("Error al obtener justificaciones:", error);
     return [];
   }
-  return data || [];
+  return (data || []) as JustificacionRow[];
 }
 
 // ─── Actualizar estado y observaciones ──────────────────────
@@ -107,7 +106,7 @@ export async function actualizarJustificacion(
     .update({
       ...updates,
       fecha_revision: new Date().toISOString(),
-    })
+    } as any)
     .eq("id", id);
 
   if (error) {
@@ -131,10 +130,7 @@ export async function subirEvidencia(
 
   const { error } = await supabase.storage
     .from("evidencias_justificaciones")
-    .upload(filePath, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
+    .upload(filePath, file, { cacheControl: "3600", upsert: false });
 
   if (error) {
     console.error("Error al subir archivo:", error);
