@@ -38,6 +38,12 @@ export const Route = createRootRoute({
       { name: "author", content: "Universidad Jaime Bausate y Meza" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { property: "og:title", content: "Mesa de Ayuda – Justificaciones Docentes | U. Jaime Bausate y Meza" },
+      { name: "twitter:title", content: "Mesa de Ayuda – Justificaciones Docentes | U. Jaime Bausate y Meza" },
+      { property: "og:description", content: "Plataforma institucional para el registro y seguimiento de justificaciones docentes." },
+      { name: "twitter:description", content: "Plataforma institucional para el registro y seguimiento de justificaciones docentes." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/27e9b1c1-4880-4dab-a40d-c59ad0c6e358" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/27e9b1c1-4880-4dab-a40d-c59ad0c6e358" },
     ],
     links: [
       {
