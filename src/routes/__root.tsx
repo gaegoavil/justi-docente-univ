@@ -1,5 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { RoleProvider } from "@/lib/roles";
+import { RoleProvider, useRole } from "@/lib/roles";
+import { LoginScreen } from "@/components/LoginScreen";
 
 import appCss from "../styles.css?url";
 
@@ -67,7 +68,17 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   return (
     <RoleProvider>
-      <Outlet />
+      <AuthGate />
     </RoleProvider>
   );
+}
+
+function AuthGate() {
+  const { isAuthenticated } = useRole();
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
+
+  return <Outlet />;
 }
