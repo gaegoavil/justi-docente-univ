@@ -72,17 +72,16 @@ function HomePage() {
       <section className="relative min-h-[600px] flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src="/hero-bausate.jpg"
+            src="/hero-mesa-ayuda.jpg"
             alt="Campus Universidad Jaime Bausate y Meza"
             className="w-full h-full object-cover"
             width={1920}
             height={1080}
             onError={(e) => {
-              // Fallback: show gradient if image not found
               (e.target as HTMLImageElement).style.display = "none";
             }}
           />
-          <div className="absolute inset-0 hero-gradient" />
+          <div className="absolute inset-0 bg-[hsl(var(--primary))]/80" />
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 py-20 w-full">
           <motion.div
@@ -158,7 +157,17 @@ function HomePage() {
 
       {/* INSTITUTIONAL BANNER */}
       <section className="relative py-16 overflow-hidden">
-        <div className="absolute inset-0 hero-gradient" />
+        <div className="absolute inset-0">
+          <img
+            src="/hero-registro.jpg"
+            alt="Universidad Jaime Bausate y Meza"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+          <div className="absolute inset-0 bg-[hsl(var(--primary))]/85" />
+        </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-primary-foreground mb-4">
             Registre su justificación de manera formal, segura y ordenada
