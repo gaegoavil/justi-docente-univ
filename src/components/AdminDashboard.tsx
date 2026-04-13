@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,10 +8,15 @@ import {
   getEstadoLabel,
   getEstadoColor,
   getTipoLabel,
-  mockJustificaciones,
   type Justificacion,
   type EstadoJustificacion,
 } from "@/lib/justificacion";
+import {
+  obtenerTodasJustificaciones,
+  actualizarJustificacion,
+  rowToJustificacion,
+} from "@/lib/supabase-service";
+import { isSupabaseConfigured } from "@/integrations/supabase/client";
 import {
   Search,
   FileText,
@@ -24,8 +29,8 @@ import {
   Download,
   ArrowLeft,
   RefreshCw,
-  Calendar,
   Save,
+  Loader2,
 } from "lucide-react";
 
 const estadoIcons: Record<string, React.ReactNode> = {
@@ -38,13 +43,30 @@ const estadoIcons: Record<string, React.ReactNode> = {
 };
 
 export function AdminDashboard() {
-  const [data, setData] = useState<Justificacion[]>([...mockJustificaciones]);
+  const [data, setData] = useState<Justificacion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState<string>("todos");
   const [filterTipo, setFilterTipo] = useState<string>("todos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [nuevoEstado, setNuevoEstado] = useState<string>("");
   const [nuevaObservacion, setNuevaObservacion] = useState("");
+
+  const cargarDatos = async () => {
+    setLoading(true);
+    const rows = await obtenerTodasJustificaciones();
+    if (isSupabaseConfigured()) {
+      setData(rows.map(rowToJustificacion));
+    } else {
+      setData(rows as unknown as Justificacion[]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
 
   const stats = {
     total: data.length,
@@ -72,24 +94,51 @@ export function AdminDashboard() {
 
   const selected = selectedId ? data.find((j) => j.id === selectedId) : null;
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!selected) return;
-    setData((prev) =>
-      prev.map((j) =>
-        j.id === selected.id
-          ? {
-              ...j,
-              estado: (nuevoEstado || j.estado) as EstadoJustificacion,
-              observaciones_admin: nuevaObservacion || j.observaciones_admin,
-              fecha_revision: new Date().toISOString(),
-            }
-          : j
-      )
-    );
+
+    if (isSupabaseConfigured()) {
+      setSaving(true);
+      const result = await actualizarJustificacion(selected.id, {
+        estado: (nuevoEstado || undefined) as EstadoJustificacion | undefined,
+        observaciones_admin: nuevaObservacion || undefined,
+      });
+      setSaving(false);
+
+      if (result.error) {
+        alert(`Error al guardar: ${result.error}`);
+        return;
+      }
+      await cargarDatos();
+    } else {
+      // Fallback local
+      setData((prev) =>
+        prev.map((j) =>
+          j.id === selected.id
+            ? {
+                ...j,
+                estado: (nuevoEstado || j.estado) as EstadoJustificacion,
+                observaciones_admin: nuevaObservacion || j.observaciones_admin,
+                fecha_revision: new Date().toISOString(),
+              }
+            : j
+        )
+      );
+    }
+
     setSelectedId(null);
     setNuevoEstado("");
     setNuevaObservacion("");
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Cargando solicitudes...</span>
+      </div>
+    );
+  }
 
   if (selected) {
     return (
@@ -159,7 +208,6 @@ export function AdminDashboard() {
             )}
           </div>
 
-          {/* Archivos */}
           {selected.archivos_adjuntos.length > 0 && (
             <div className="mb-6">
               <h4 className="font-semibold text-foreground mb-2">Archivos adjuntos</h4>
@@ -168,7 +216,11 @@ export function AdminDashboard() {
                   <div key={i} className="flex items-center gap-2 bg-surface rounded-lg px-4 py-2 border text-sm">
                     <FileText className="h-4 w-4 text-primary" />
                     <span className="font-medium">{a.nombre}</span>
-                    <span className="text-muted-foreground">({(a.tamano / 1024 / 1024).toFixed(2)} MB)</span>
+                    {a.url && (
+                      <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-primary text-sm hover:underline ml-auto">
+                        Ver archivo
+                      </a>
+                    )}
                   </div>
                 ))}
               </div>
@@ -215,9 +267,9 @@ export function AdminDashboard() {
                 placeholder="Escriba sus observaciones sobre esta solicitud..."
               />
             </div>
-            <Button onClick={handleSaveChanges} size="lg">
-              <Save className="h-4 w-4" />
-              Guardar cambios
+            <Button onClick={handleSaveChanges} size="lg" disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? "Guardando..." : "Guardar cambios"}
             </Button>
           </div>
         </div>
@@ -234,9 +286,9 @@ export function AdminDashboard() {
             Gestión y revisión de justificaciones docentes
           </p>
         </div>
-        <Button variant="outline" size="sm">
-          <Download className="h-4 w-4" />
-          Exportar registros
+        <Button variant="outline" size="sm" onClick={cargarDatos}>
+          <RefreshCw className="h-4 w-4" />
+          Actualizar
         </Button>
       </div>
 
@@ -359,9 +411,11 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-sm text-muted-foreground font-[family-name:var(--font-body)]">
-        <strong className="text-foreground">Nota:</strong> Este panel muestra datos de demostración. Al conectar con Lovable Cloud, los registros serán reales y persistentes.
-      </div>
+      {!isSupabaseConfigured() && (
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-sm text-muted-foreground font-[family-name:var(--font-body)]">
+          <strong className="text-foreground">Nota:</strong> Supabase no está configurado. Se muestran datos de demostración. Configure VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY para datos reales.
+        </div>
+      )}
     </div>
   );
 }

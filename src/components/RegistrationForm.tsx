@@ -239,6 +239,7 @@ export function RegistrationForm() {
             accion_correctiva: "",
           });
           setArchivos([]);
+          setArchivoFiles([]);
           setDeclaracion(false);
           setFechaIncidencia(undefined);
           setFechaRegularizacion(undefined);
@@ -469,10 +470,21 @@ export function RegistrationForm() {
         <FieldError field="declaracion" />
       </div>
 
+      {submitError && (
+        <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+          <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
+          <span>{submitError}</span>
+        </div>
+      )}
+
       <div className="flex justify-center">
-        <Button type="submit" size="xl" className="w-full md:w-auto">
-          <CheckCircle2 className="h-5 w-5" />
-          Enviar justificación
+        <Button type="submit" size="xl" className="w-full md:w-auto" disabled={submitting}>
+          {submitting ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <CheckCircle2 className="h-5 w-5" />
+          )}
+          {submitting ? "Enviando..." : "Enviar justificación"}
         </Button>
       </div>
     </form>

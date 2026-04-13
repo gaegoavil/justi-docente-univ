@@ -18,14 +18,18 @@ interface RoleContextType {
 const RoleContext = createContext<RoleContextType | null>(null);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<UserRole | null>(() => {
-    if (typeof window === "undefined") return null;
-    return (sessionStorage.getItem("role") as UserRole) || null;
-  });
-  const [email, setEmail] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return sessionStorage.getItem("email") || null;
-  });
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Hydrate from sessionStorage only on client after mount
+  if (typeof window !== "undefined" && !hydrated) {
+    const storedRole = sessionStorage.getItem("role") as UserRole | null;
+    const storedEmail = sessionStorage.getItem("email");
+    if (storedRole) setRole(storedRole);
+    if (storedEmail) setEmail(storedEmail);
+    setHydrated(true);
+  }
 
   const loginAsDocente = (correo: string): string | null => {
     const trimmed = correo.trim().toLowerCase();
