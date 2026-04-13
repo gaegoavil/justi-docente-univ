@@ -7,23 +7,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Upload, X, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { CalendarIcon, Upload, X, FileText, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { generarCodigoSeguimiento, type ArchivoAdjunto } from "@/lib/justificacion";
+import { type ArchivoAdjunto } from "@/lib/justificacion";
 import { ConfirmationView } from "@/components/ConfirmationView";
+import { useRole } from "@/lib/roles";
+import { isSupabaseConfigured } from "@/integrations/supabase/client";
+import {
+  generarCodigoSeguimientoUnico,
+  crearJustificacion,
+  subirEvidencia,
+} from "@/lib/supabase-service";
+import { generarCodigoSeguimiento } from "@/lib/justificacion";
 
 interface FormErrors {
   [key: string]: string;
 }
 
 export function RegistrationForm() {
+  const { email } = useRole();
   const [submitted, setSubmitted] = useState(false);
   const [codigoSeguimiento, setCodigoSeguimiento] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [archivos, setArchivos] = useState<ArchivoAdjunto[]>([]);
+  const [archivoFiles, setArchivoFiles] = useState<File[]>([]);
   const [declaracion, setDeclaracion] = useState(false);
   const [fechaIncidencia, setFechaIncidencia] = useState<Date | undefined>();
   const [fechaRegularizacion, setFechaRegularizacion] = useState<Date | undefined>();
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -62,19 +74,23 @@ export function RegistrationForm() {
     const validTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf", "video/mp4"];
     const maxSize = 10 * 1024 * 1024;
     const newFiles: ArchivoAdjunto[] = [];
+    const newRawFiles: File[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (!validTypes.includes(file.type)) continue;
       if (file.size > maxSize) continue;
       newFiles.push({ nombre: file.name, tipo: file.type, tamano: file.size });
+      newRawFiles.push(file);
     }
     setArchivos((prev) => [...prev, ...newFiles]);
+    setArchivoFiles((prev) => [...prev, ...newRawFiles]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
 
   const removeFile = (index: number) => {
     setArchivos((prev) => prev.filter((_, i) => i !== index));
+    setArchivoFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -84,12 +100,15 @@ export function RegistrationForm() {
     const validTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf", "video/mp4"];
     const maxSize = 10 * 1024 * 1024;
     const newFiles: ArchivoAdjunto[] = [];
+    const newRawFiles: File[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (!validTypes.includes(file.type) || file.size > maxSize) continue;
       newFiles.push({ nombre: file.name, tipo: file.type, tamano: file.size });
+      newRawFiles.push(file);
     }
     setArchivos((prev) => [...prev, ...newFiles]);
+    setArchivoFiles((prev) => [...prev, ...newRawFiles]);
   }, []);
 
   const validate = (): boolean => {
@@ -115,12 +134,81 @@ export function RegistrationForm() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    const codigo = generarCodigoSeguimiento();
-    setCodigoSeguimiento(codigo);
-    setSubmitted(true);
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const codigo = isSupabaseConfigured()
+        ? await generarCodigoSeguimientoUnico()
+        : generarCodigoSeguimiento();
+
+      // Subir archivo si existe y Supabase está configurado
+      let archivoUrl: string | null = null;
+      let archivoPath: string | null = null;
+      let archivoTipo: string | null = null;
+
+      if (archivoFiles.length > 0 && isSupabaseConfigured()) {
+        const file = archivoFiles[0];
+        const result = await subirEvidencia(file, codigo);
+        if (result.error) {
+          setSubmitError(`Error al subir archivo: ${result.error}`);
+          setSubmitting(false);
+          return;
+        }
+        archivoUrl = result.url;
+        archivoPath = result.path;
+        archivoTipo = file.type;
+      }
+
+      if (isSupabaseConfigured()) {
+        const correoDocente = email || form.correo_institucional;
+        const result = await crearJustificacion({
+          codigo_seguimiento: codigo,
+          correo_docente: correoDocente.toLowerCase(),
+          nombre_completo: form.nombre_completo,
+          dni_codigo_docente: form.dni_codigo_docente,
+          celular: form.celular,
+          facultad_area: form.facultad_area,
+          curso_asignatura: form.curso_asignatura,
+          tipo_justificacion: form.tipo_justificacion as any,
+          fecha_incidencia: fechaIncidencia!.toISOString().split("T")[0],
+          hora_incidencia: form.hora_incidencia,
+          turno: form.turno,
+          modalidad: form.modalidad,
+          sede_aula_enlace: form.sede_aula_enlace || null,
+          cantidad_estudiantes_afectados: form.cantidad_estudiantes_afectados
+            ? parseInt(form.cantidad_estudiantes_afectados)
+            : null,
+          descripcion: form.descripcion,
+          motivo_principal: form.motivo_principal,
+          impacto_academico: form.impacto_academico || null,
+          accion_correctiva: form.accion_correctiva || null,
+          fecha_regularizacion: fechaRegularizacion
+            ? fechaRegularizacion.toISOString().split("T")[0]
+            : null,
+          archivo_url: archivoUrl,
+          archivo_path: archivoPath,
+          archivo_tipo: archivoTipo,
+        });
+
+        if (result.error) {
+          setSubmitError(`Error al guardar: ${result.error}`);
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      setCodigoSeguimiento(codigo);
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError("Ocurrió un error inesperado. Intente nuevamente.");
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
