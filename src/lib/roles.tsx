@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 
 export type UserRole = "docente" | "coordinador";
 
@@ -20,16 +20,13 @@ const RoleContext = createContext<RoleContextType | null>(null);
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [email, setEmail] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
 
-  // Hydrate from sessionStorage only on client after mount
-  if (typeof window !== "undefined" && !hydrated) {
+  useEffect(() => {
     const storedRole = sessionStorage.getItem("role") as UserRole | null;
     const storedEmail = sessionStorage.getItem("email");
     if (storedRole) setRole(storedRole);
     if (storedEmail) setEmail(storedEmail);
-    setHydrated(true);
-  }
+  }, []);
 
   const loginAsDocente = (correo: string): string | null => {
     const trimmed = correo.trim().toLowerCase();
