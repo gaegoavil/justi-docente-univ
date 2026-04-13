@@ -33,7 +33,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Mesa de Ayuda – Justificaciones Docentes | U. Jaime Bausate y Meza" },
+      { title: "Mesa de Ayuda | Universidad Jaime Bausate y Meza" },
       { name: "description", content: "Plataforma institucional para el registro y seguimiento de justificaciones docentes." },
       { name: "author", content: "Universidad Jaime Bausate y Meza" },
       { property: "og:type", content: "website" },
@@ -43,6 +43,11 @@ export const Route = createRootRoute({
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "icon",
+        type: "image/png",
+        href: "/favicon.png",
       },
     ],
   }),
