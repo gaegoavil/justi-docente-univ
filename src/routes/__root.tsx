@@ -1,5 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { RoleProvider } from "@/lib/roles";
+import { RoleProvider, useRole } from "@/lib/roles";
+import { LoginScreen } from "@/components/LoginScreen";
 
 import appCss from "../styles.css?url";
 
