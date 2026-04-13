@@ -45,8 +45,9 @@ export interface JustificacionRow {
 }
 
 export interface JustificacionInsert
-  extends Omit<JustificacionRow, "id" | "fecha_registro" | "fecha_revision" | "estado"> {
+  extends Omit<JustificacionRow, "id" | "fecha_registro" | "fecha_revision" | "estado" | "observaciones_admin"> {
   estado?: EstadoJustificacion;
+  observaciones_admin?: string | null;
 }
 
 export interface PerfilUsuarioRow {
