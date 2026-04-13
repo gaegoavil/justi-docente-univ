@@ -209,11 +209,6 @@ export function DocenteHistorial() {
         </div>
       )}
 
-      {/* Demo note */}
-      <div className="bg-primary/5 border-2 border-primary/20 rounded-xl p-5 text-base text-muted-foreground">
-        <strong className="text-foreground">Nota de demostración:</strong> Inicie sesión con el correo{" "}
-        <span className="font-mono font-bold text-primary">mgarcia@bausate.edu.pe</span> para ver solicitudes de ejemplo.
-      </div>
     </div>
   );
 }

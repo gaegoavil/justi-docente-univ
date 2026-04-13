@@ -30,10 +30,10 @@ function SoportePage() {
 
           <div className="grid gap-6 md:grid-cols-2">
             {[
-              { icon: Mail, label: "Correo electrónico", value: "coordinacion@bausate.edu.pe", desc: "Respuesta en 24-48 horas hábiles" },
-              { icon: Phone, label: "Teléfono", value: "(01) 715-6600", desc: "Lunes a Viernes" },
-              { icon: MapPin, label: "Dirección", value: "Jr. San Martín 540, Jesús María", desc: "Lima, Perú" },
-              { icon: Clock, label: "Horario de atención", value: "8:00 AM – 6:00 PM", desc: "Lunes a Viernes" },
+              { icon: Mail, label: "Correo electrónico", value: "bausate@bausate.edu.pe", desc: "Respuesta en 24-48 horas hábiles" },
+              { icon: Phone, label: "Teléfono", value: "+51 (1) 319 3523", desc: "Lunes a Viernes" },
+              { icon: MapPin, label: "Dirección", value: "Jirón Río de Janeiro 560, Jesús María", desc: "Lima, Perú" },
+              { icon: Clock, label: "Horario de atención", value: "Lunes a Viernes", desc: "Horario regular de oficina" },
             ].map((item) => (
               <div key={item.label} className="bg-card rounded-xl border p-6">
                 <div className="flex items-center gap-3 mb-3">
