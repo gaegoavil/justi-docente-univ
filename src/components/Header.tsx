@@ -1,20 +1,24 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import logoImg from "@/assets/logo-university.png";
 
-const navItems = [
-  { label: "Inicio", to: "/" },
-  { label: "Registrar justificación", to: "/registrar" },
-  { label: "Consultar estado", to: "/consultar" },
-  { label: "Panel administrativo", to: "/admin" },
-  { label: "Soporte", to: "/soporte" },
+const docenteItems = [
+  { label: "Inicio", to: "/" as const },
+  { label: "Registrar justificación", to: "/registrar" as const },
+  { label: "Mis solicitudes", to: "/consultar" as const },
+  { label: "Soporte", to: "/soporte" as const },
+];
+
+const adminItems = [
+  { label: "Panel administrativo", to: "/admin" as const },
 ];
 
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const isAdmin = location.pathname.startsWith("/admin");
 
   return (
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b-2 border-primary/20 shadow-sm">
@@ -22,7 +26,22 @@ export function Header() {
       <div className="bg-institutional text-institutional-foreground text-xs py-1.5">
         <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
           <span>Universidad Jaime Bausate y Meza — Uso interno institucional</span>
-          <span className="hidden sm:inline">Sistema de Gestión Docente</span>
+          <div className="hidden sm:flex items-center gap-4">
+            <Link
+              to="/consultar"
+              className={`flex items-center gap-1 transition-opacity ${!isAdmin ? "opacity-100 font-semibold" : "opacity-70 hover:opacity-100"}`}
+            >
+              <User className="h-3 w-3" />
+              Portal Docente
+            </Link>
+            <Link
+              to="/admin"
+              className={`flex items-center gap-1 transition-opacity ${isAdmin ? "opacity-100 font-semibold" : "opacity-70 hover:opacity-100"}`}
+            >
+              <ShieldCheck className="h-3 w-3" />
+              Administración
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -44,7 +63,7 @@ export function Header() {
 
           {/* Desktop nav */}
           <nav className="hidden lg:flex items-center gap-1">
-            {navItems.map((item) => (
+            {docenteItems.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
@@ -54,6 +73,21 @@ export function Header() {
                     : "text-foreground/70 hover:text-primary hover:bg-primary/5"
                 }`}
               >
+                {item.label}
+              </Link>
+            ))}
+            <div className="w-px h-6 bg-border mx-2" />
+            {adminItems.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  location.pathname === item.to
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground/70 hover:text-primary hover:bg-primary/5"
+                }`}
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
                 {item.label}
               </Link>
             ))}
@@ -78,12 +112,35 @@ export function Header() {
       {mobileOpen && (
         <div className="lg:hidden border-t bg-background">
           <div className="px-4 py-3 space-y-1">
-            {navItems.map((item) => (
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2 flex items-center gap-1.5">
+              <User className="h-3 w-3" />
+              Portal Docente
+            </div>
+            {docenteItems.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
-                className={`block px-3 py-2 rounded-md text-sm font-medium ${
+                className={`block px-3 py-2.5 rounded-md text-base font-medium ${
+                  location.pathname === item.to
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground/70 hover:bg-muted"
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
+            <div className="border-t my-2" />
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2 flex items-center gap-1.5">
+              <ShieldCheck className="h-3 w-3" />
+              Administración
+            </div>
+            {adminItems.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setMobileOpen(false)}
+                className={`block px-3 py-2.5 rounded-md text-base font-medium ${
                   location.pathname === item.to
                     ? "bg-primary/10 text-primary"
                     : "text-foreground/70 hover:bg-muted"
