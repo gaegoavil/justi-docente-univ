@@ -68,7 +68,17 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   return (
     <RoleProvider>
-      <Outlet />
+      <AuthGate />
     </RoleProvider>
   );
+}
+
+function AuthGate() {
+  const { isAuthenticated } = useRole();
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
+
+  return <Outlet />;
 }
