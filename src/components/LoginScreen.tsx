@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Mail, ShieldCheck, ArrowLeft, AlertCircle, GraduationCap } from "lucide-react";
 import logoImg from "@/assets/logo-university.png";
-import heroCampus from "@/assets/hero-campus.jpg";
+import heroCampus from "@/assets/hero-campus.png";
 
 export function LoginScreen() {
   const [view, setView] = useState<"main" | "docente" | "coordinador">("main");
