@@ -74,15 +74,15 @@ function HomePage() {
           <img
             src="/hero-mesa-ayuda.jpg"
             alt="Campus Universidad Jaime Bausate y Meza"
-            className="w-full h-full object-cover brightness-[0.35]"
+            className="w-full h-full object-cover brightness-[0.2] saturate-[0.3]"
             width={1920}
             height={1080}
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = "none";
             }}
           />
-          <div className="absolute inset-0 bg-[hsl(var(--primary))]/90" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--primary))]/60 to-[hsl(var(--primary))]/95" />
+          <div className="absolute inset-0 bg-[hsl(var(--primary))]/93" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--primary))]/70 to-[hsl(var(--primary))]/97" />
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 py-20 w-full">
           <motion.div
@@ -162,13 +162,13 @@ function HomePage() {
           <img
             src="/hero-registro.jpg"
             alt="Universidad Jaime Bausate y Meza"
-            className="w-full h-full object-cover brightness-[0.35]"
+            className="w-full h-full object-cover brightness-[0.2] saturate-[0.3]"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = "none";
             }}
           />
-          <div className="absolute inset-0 bg-[hsl(var(--primary))]/90" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--primary))]/60 to-[hsl(var(--primary))]/95" />
+          <div className="absolute inset-0 bg-[hsl(var(--primary))]/93" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--primary))]/70 to-[hsl(var(--primary))]/97" />
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-primary-foreground mb-4">
