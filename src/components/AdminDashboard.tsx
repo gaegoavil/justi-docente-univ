@@ -1,334 +1,372 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  getEstadoLabel,
-  getEstadoColor,
-  getTipoLabel,
-  type Justificacion,
-  type EstadoJustificacion,
-} from "@/lib/justificacion";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
-  obtenerTodasJustificaciones,
-  actualizarJustificacion,
-  rowToJustificacion,
-} from "@/lib/supabase-service";
-import { isSupabaseConfigured } from "@/integrations/supabase/client";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Search,
-  FileText,
   Eye,
-  Clock,
-  CheckCircle,
+  RefreshCw,
+  ClipboardList,
+  Clock3,
+  CheckCircle2,
   AlertTriangle,
   XCircle,
-  BarChart3,
-  Download,
-  ArrowLeft,
-  RefreshCw,
-  Save,
   Loader2,
+  FileText,
+  CalendarDays,
+  User,
+  Mail,
+  BookOpen,
+  Building2,
 } from "lucide-react";
+import { mockJustificaciones, type Justificacion } from "@/lib/justificacion";
+import {
+  getEstadoColor,
+  getEstadoLabel,
+  getTipoLabel,
+  type EstadoJustificacion,
+} from "@/lib/justificacion";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 
-const estadoIcons: Record<string, React.ReactNode> = {
-  pendiente: <Clock className="h-4 w-4" />,
-  en_revision: <Eye className="h-4 w-4" />,
-  aprobada: <CheckCircle className="h-4 w-4" />,
-  observada: <AlertTriangle className="h-4 w-4" />,
-  rechazada: <XCircle className="h-4 w-4" />,
-  subsanada: <RefreshCw className="h-4 w-4" />,
-};
+type FiltroEstado = "todos" | EstadoJustificacion;
+type FiltroTipo = "todos" | "tardanza" | "inasistencia";
+
+function mapRowToJustificacion(row: any): Justificacion {
+  return {
+    id: row.id,
+    codigo_seguimiento: row.codigo_seguimiento,
+    nombre_completo: row.nombre_completo,
+    dni_codigo_docente: row.dni_codigo_docente,
+    correo_institucional: row.correo_docente,
+    celular: row.celular,
+    facultad_area: row.facultad_area,
+    curso_asignatura: row.curso_asignatura,
+    tipo_justificacion: row.tipo_justificacion,
+    fecha_incidencia: row.fecha_incidencia,
+    hora_incidencia: row.hora_incidencia,
+    turno: row.turno,
+    modalidad: row.modalidad,
+    sede_aula_enlace: row.sede_aula_enlace || "",
+    descripcion: row.descripcion,
+    motivo_principal: row.descripcion,
+    impacto_academico: "",
+    accion_correctiva: "",
+    cantidad_estudiantes_afectados: undefined,
+    fecha_regularizacion: undefined,
+    declaracion_jurada: false,
+    archivos_adjuntos: row.archivo_url
+      ? [
+          {
+            nombre: row.archivo_path?.split("/").pop() || "evidencia",
+            tipo: row.archivo_tipo || "archivo",
+            tamano: 0,
+            url: row.archivo_url,
+          },
+        ]
+      : [],
+    estado: row.estado,
+    observaciones_admin: row.observaciones_admin || "",
+    fecha_registro: row.fecha_registro,
+    fecha_revision: row.fecha_revision || undefined,
+  };
+}
+
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+}: {
+  title: string;
+  value: number;
+  icon: React.ElementType;
+}) {
+  return (
+    <Card className="border-border/60 shadow-sm">
+      <CardContent className="flex items-center justify-between p-5">
+        <div>
+          <p className="text-sm text-muted-foreground">{title}</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
+        </div>
+        <div className="rounded-full bg-primary/10 p-3 text-primary">
+          <Icon className="h-5 w-5" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DetailItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+}) {
+  return (
+    <div className="rounded-lg border bg-muted/30 p-4">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p className="text-sm font-medium text-foreground">{value || "—"}</p>
+    </div>
+  );
+}
 
 export function AdminDashboard() {
-  const [data, setData] = useState<Justificacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterEstado, setFilterEstado] = useState<string>("todos");
-  const [filterTipo, setFilterTipo] = useState<string>("todos");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [nuevoEstado, setNuevoEstado] = useState<string>("");
-  const [nuevaObservacion, setNuevaObservacion] = useState("");
+  const [solicitudes, setSolicitudes] = useState<Justificacion[]>([]);
+  const [search, setSearch] = useState("");
+  const [estadoFiltro, setEstadoFiltro] = useState<FiltroEstado>("todos");
+  const [tipoFiltro, setTipoFiltro] = useState<FiltroTipo>("todos");
+  const [selected, setSelected] = useState<Justificacion | null>(null);
+  const [open, setOpen] = useState(false);
+  const [nuevoEstado, setNuevoEstado] = useState<EstadoJustificacion | "">("");
+  const [observaciones, setObservaciones] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const cargarDatos = async () => {
+  const loadSolicitudes = async () => {
     setLoading(true);
-    const rows = await obtenerTodasJustificaciones();
-    if (isSupabaseConfigured()) {
-      setData(rows.map(rowToJustificacion));
-    } else {
-      setData(rows as unknown as Justificacion[]);
+    setError(null);
+
+    try {
+      if (!isSupabaseConfigured()) {
+        setSolicitudes(mockJustificaciones);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("justificaciones_docentes")
+        .select("*")
+        .order("fecha_registro", { ascending: false });
+
+      if (error) {
+        setError(error.message);
+        setSolicitudes(mockJustificaciones);
+        return;
+      }
+
+      const mapped = (data || []).map(mapRowToJustificacion);
+      setSolicitudes(mapped);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo cargar la información.");
+      setSolicitudes(mockJustificaciones);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
-    cargarDatos();
+    loadSolicitudes();
   }, []);
 
-  const stats = {
-    total: data.length,
-    pendiente: data.filter((j) => j.estado === "pendiente").length,
-    en_revision: data.filter((j) => j.estado === "en_revision").length,
-    aprobada: data.filter((j) => j.estado === "aprobada").length,
-    observada: data.filter((j) => j.estado === "observada").length,
-    rechazada: data.filter((j) => j.estado === "rechazada").length,
-    subsanada: data.filter((j) => j.estado === "subsanada").length,
+  const filteredSolicitudes = useMemo(() => {
+    return solicitudes.filter((item) => {
+      const searchValue = search.trim().toLowerCase();
+
+      const matchesSearch =
+        !searchValue ||
+        item.nombre_completo.toLowerCase().includes(searchValue) ||
+        item.correo_institucional.toLowerCase().includes(searchValue) ||
+        item.codigo_seguimiento.toLowerCase().includes(searchValue) ||
+        item.curso_asignatura.toLowerCase().includes(searchValue) ||
+        item.facultad_area.toLowerCase().includes(searchValue);
+
+      const matchesEstado =
+        estadoFiltro === "todos" || item.estado === estadoFiltro;
+
+      const matchesTipo =
+        tipoFiltro === "todos" || item.tipo_justificacion === tipoFiltro;
+
+      return matchesSearch && matchesEstado && matchesTipo;
+    });
+  }, [solicitudes, search, estadoFiltro, tipoFiltro]);
+
+  const stats = useMemo(() => {
+    return {
+      total: solicitudes.length,
+      pendientes: solicitudes.filter((x) => x.estado === "pendiente").length,
+      enRevision: solicitudes.filter((x) => x.estado === "en_revision").length,
+      aprobadas: solicitudes.filter((x) => x.estado === "aprobada").length,
+      observadas: solicitudes.filter((x) => x.estado === "observada").length,
+      rechazadas: solicitudes.filter((x) => x.estado === "rechazada").length,
+    };
+  }, [solicitudes]);
+
+  const openDetail = (item: Justificacion) => {
+    setSelected(item);
+    setNuevoEstado(item.estado);
+    setObservaciones(item.observaciones_admin || "");
+    setOpen(true);
   };
 
-  const filtered = data.filter((j) => {
-    const s = searchTerm.toLowerCase();
-    const matchSearch =
-      !searchTerm ||
-      j.nombre_completo.toLowerCase().includes(s) ||
-      j.codigo_seguimiento.toLowerCase().includes(s) ||
-      j.curso_asignatura.toLowerCase().includes(s) ||
-      j.correo_institucional.toLowerCase().includes(s) ||
-      j.dni_codigo_docente.toLowerCase().includes(s);
-    const matchEstado = filterEstado === "todos" || j.estado === filterEstado;
-    const matchTipo = filterTipo === "todos" || j.tipo_justificacion === filterTipo;
-    return matchSearch && matchEstado && matchTipo;
-  });
+  const handleGuardarRevision = async () => {
+    if (!selected || !nuevoEstado) return;
 
-  const selected = selectedId ? data.find((j) => j.id === selectedId) : null;
+    setSaving(true);
+    setError(null);
 
-  const handleSaveChanges = async () => {
-    if (!selected) return;
+    try {
+      if (isSupabaseConfigured()) {
+        const { error } = await supabase
+          .from("justificaciones_docentes")
+          .update({
+            estado: nuevoEstado,
+            observaciones_admin: observaciones || null,
+            fecha_revision: new Date().toISOString(),
+          })
+          .eq("id", selected.id);
 
-    if (isSupabaseConfigured()) {
-      setSaving(true);
-      const result = await actualizarJustificacion(selected.id, {
-        estado: (nuevoEstado || undefined) as EstadoJustificacion | undefined,
-        observaciones_admin: nuevaObservacion || undefined,
-      });
-      setSaving(false);
-
-      if (result.error) {
-        alert(`Error al guardar: ${result.error}`);
-        return;
+        if (error) {
+          setError(error.message);
+          setSaving(false);
+          return;
+        }
       }
-      await cargarDatos();
-    } else {
-      // Fallback local
-      setData((prev) =>
-        prev.map((j) =>
-          j.id === selected.id
+
+      setSolicitudes((prev) =>
+        prev.map((item) =>
+          item.id === selected.id
             ? {
-                ...j,
-                estado: (nuevoEstado || j.estado) as EstadoJustificacion,
-                observaciones_admin: nuevaObservacion || j.observaciones_admin,
+                ...item,
+                estado: nuevoEstado,
+                observaciones_admin: observaciones,
                 fecha_revision: new Date().toISOString(),
               }
-            : j
-        )
+            : item,
+        ),
       );
-    }
 
-    setSelectedId(null);
-    setNuevoEstado("");
-    setNuevaObservacion("");
+      setSelected((prev) =>
+        prev
+          ? {
+              ...prev,
+              estado: nuevoEstado,
+              observaciones_admin: observaciones,
+              fecha_revision: new Date().toISOString(),
+            }
+          : prev,
+      );
+
+      setOpen(false);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo actualizar la solicitud.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-3 text-muted-foreground">Cargando solicitudes...</span>
-      </div>
-    );
-  }
-
-  if (selected) {
-    return (
-      <div className="space-y-6">
-        <button
-          onClick={() => { setSelectedId(null); setNuevoEstado(""); setNuevaObservacion(""); }}
-          className="flex items-center gap-2 text-primary font-semibold hover:underline"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver al listado
-        </button>
-
-        <div className="bg-card rounded-xl border shadow-sm p-6 md:p-8">
-          <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
-            <div>
-              <h3 className="text-xl font-bold text-foreground">Detalle de solicitud</h3>
-              <p className="text-sm text-muted-foreground font-mono">{selected.codigo_seguimiento}</p>
-            </div>
-            <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-full border ${getEstadoColor(selected.estado)}`}>
-              {estadoIcons[selected.estado]}
-              {getEstadoLabel(selected.estado)}
-            </span>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 text-sm mb-6">
-            <Detail label="Docente" value={selected.nombre_completo} />
-            <Detail label="DNI / Código" value={selected.dni_codigo_docente} />
-            <Detail label="Correo" value={selected.correo_institucional} />
-            <Detail label="Celular" value={selected.celular} />
-            <Detail label="Facultad" value={selected.facultad_area} />
-            <Detail label="Curso" value={selected.curso_asignatura} />
-            <Detail label="Tipo" value={getTipoLabel(selected.tipo_justificacion)} />
-            <Detail label="Fecha incidencia" value={new Date(selected.fecha_incidencia).toLocaleDateString("es-PE")} />
-            <Detail label="Hora" value={selected.hora_incidencia} />
-            <Detail label="Turno" value={selected.turno} capitalize />
-            <Detail label="Modalidad" value={selected.modalidad} capitalize />
-            <Detail label="Sede/Aula" value={selected.sede_aula_enlace || "—"} />
-            {selected.cantidad_estudiantes_afectados && (
-              <Detail label="Estudiantes afectados" value={String(selected.cantidad_estudiantes_afectados)} />
-            )}
-            <Detail label="Fecha registro" value={new Date(selected.fecha_registro).toLocaleDateString("es-PE")} />
-            {selected.fecha_revision && (
-              <Detail label="Fecha revisión" value={new Date(selected.fecha_revision).toLocaleDateString("es-PE")} />
-            )}
-          </div>
-
-          <div className="space-y-4 mb-6">
-            <div className="bg-surface rounded-lg p-4 border">
-              <h4 className="font-semibold text-foreground mb-1">Descripción</h4>
-              <p className="text-sm text-foreground/80 font-[family-name:var(--font-body)]">{selected.descripcion}</p>
-            </div>
-            <div className="bg-surface rounded-lg p-4 border">
-              <h4 className="font-semibold text-foreground mb-1">Motivo principal</h4>
-              <p className="text-sm text-foreground/80 font-[family-name:var(--font-body)]">{selected.motivo_principal}</p>
-            </div>
-            {selected.impacto_academico && (
-              <div className="bg-surface rounded-lg p-4 border">
-                <h4 className="font-semibold text-foreground mb-1">Impacto académico</h4>
-                <p className="text-sm text-foreground/80 font-[family-name:var(--font-body)]">{selected.impacto_academico}</p>
-              </div>
-            )}
-            {selected.accion_correctiva && (
-              <div className="bg-surface rounded-lg p-4 border">
-                <h4 className="font-semibold text-foreground mb-1">Acción correctiva</h4>
-                <p className="text-sm text-foreground/80 font-[family-name:var(--font-body)]">{selected.accion_correctiva}</p>
-              </div>
-            )}
-          </div>
-
-          {selected.archivos_adjuntos.length > 0 && (
-            <div className="mb-6">
-              <h4 className="font-semibold text-foreground mb-2">Archivos adjuntos</h4>
-              <div className="space-y-2">
-                {selected.archivos_adjuntos.map((a, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-surface rounded-lg px-4 py-2 border text-sm">
-                    <FileText className="h-4 w-4 text-primary" />
-                    <span className="font-medium">{a.nombre}</span>
-                    {a.url && (
-                      <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-primary text-sm hover:underline ml-auto">
-                        Ver archivo
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {selected.observaciones_admin && (
-            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6">
-              <h4 className="font-semibold text-foreground mb-1">Observaciones anteriores</h4>
-              <p className="text-sm text-foreground/80 font-[family-name:var(--font-body)]">{selected.observaciones_admin}</p>
-            </div>
-          )}
-
-          {/* Admin actions */}
-          <div className="border-t pt-6 space-y-4">
-            <h4 className="font-bold text-foreground text-lg">Acciones administrativas</h4>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label className="font-semibold">Cambiar estado</Label>
-                <Select value={nuevoEstado} onValueChange={setNuevoEstado}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Seleccionar nuevo estado" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pendiente">Pendiente</SelectItem>
-                    <SelectItem value="en_revision">En revisión</SelectItem>
-                    <SelectItem value="aprobada">Aprobada</SelectItem>
-                    <SelectItem value="observada">Observada</SelectItem>
-                    <SelectItem value="rechazada">Rechazada</SelectItem>
-                    <SelectItem value="subsanada">Subsanada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="font-semibold">Fecha de revisión</Label>
-                <Input type="date" className="mt-1" defaultValue={new Date().toISOString().split("T")[0]} />
-              </div>
-            </div>
-            <div>
-              <Label className="font-semibold">Agregar observación</Label>
-              <Textarea
-                rows={3}
-                className="mt-1"
-                value={nuevaObservacion}
-                onChange={(e) => setNuevaObservacion(e.target.value)}
-                placeholder="Escriba sus observaciones sobre esta solicitud..."
-              />
-            </div>
-            <Button onClick={handleSaveChanges} size="lg" disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {saving ? "Guardando..." : "Guardar cambios"}
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Panel Administrativo</h1>
-          <p className="text-muted-foreground font-[family-name:var(--font-body)]">
-            Gestión y revisión de justificaciones docentes
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={cargarDatos}>
-          <RefreshCw className="h-4 w-4" />
-          Actualizar
-        </Button>
-      </div>
-
-      {/* Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        {[
-          { label: "Total", value: stats.total, icon: BarChart3, color: "bg-primary/10 text-primary" },
-          { label: "Pendientes", value: stats.pendiente, icon: Clock, color: "bg-yellow-100 text-yellow-700" },
-          { label: "En revisión", value: stats.en_revision, icon: Eye, color: "bg-blue-100 text-blue-700" },
-          { label: "Aprobadas", value: stats.aprobada, icon: CheckCircle, color: "bg-green-100 text-green-700" },
-          { label: "Observadas", value: stats.observada, icon: AlertTriangle, color: "bg-orange-100 text-orange-700" },
-          { label: "Rechazadas", value: stats.rechazada, icon: XCircle, color: "bg-red-100 text-red-700" },
-          { label: "Subsanadas", value: stats.subsanada, icon: RefreshCw, color: "bg-teal-100 text-teal-700" },
-        ].map((s) => (
-          <div key={s.label} className="bg-card rounded-xl border p-3 shadow-sm">
-            <div className={`w-8 h-8 rounded-lg ${s.color} flex items-center justify-center mb-2`}>
-              <s.icon className="h-4 w-4" />
-            </div>
-            <div className="text-xl font-bold text-foreground">{s.value}</div>
-            <div className="text-xs text-muted-foreground">{s.label}</div>
+    <div className="space-y-8">
+      {/* Encabezado */}
+      <div className="rounded-2xl border bg-card p-6 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">
+              Panel Administrativo
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Gestión, revisión y seguimiento institucional de justificaciones
+              docentes.
+            </p>
           </div>
-        ))}
+
+          <Button
+            variant="outline"
+            onClick={loadSolicitudes}
+            disabled={loading}
+            className="gap-2"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Actualizar
+          </Button>
+        </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-card rounded-xl border p-4 shadow-sm flex flex-wrap gap-3 items-end">
-        <div className="flex-1 min-w-[200px]">
+      {/* KPIs */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <StatCard
+          title="Total de solicitudes"
+          value={stats.total}
+          icon={ClipboardList}
+        />
+        <StatCard
+          title="Pendientes"
+          value={stats.pendientes}
+          icon={Clock3}
+        />
+        <StatCard
+          title="En revisión"
+          value={stats.enRevision}
+          icon={RefreshCw}
+        />
+        <StatCard
+          title="Aprobadas"
+          value={stats.aprobadas}
+          icon={CheckCircle2}
+        />
+        <StatCard
+          title="Observadas"
+          value={stats.observadas}
+          icon={AlertTriangle}
+        />
+        <StatCard
+          title="Rechazadas"
+          value={stats.rechazadas}
+          icon={XCircle}
+        />
+      </div>
+
+      {/* Filtros */}
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg">Filtros de búsqueda</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nombre, código, correo, DNI o curso..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por docente, correo, código, curso o escuela"
+              className="pl-9"
             />
           </div>
-        </div>
-        <div className="w-44">
-          <Select value={filterEstado} onValueChange={setFilterEstado}>
-            <SelectTrigger><SelectValue placeholder="Estado" /></SelectTrigger>
+
+          <Select
+            value={estadoFiltro}
+            onValueChange={(value) => setEstadoFiltro(value as FiltroEstado)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Filtrar por estado" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los estados</SelectItem>
               <SelectItem value="pendiente">Pendiente</SelectItem>
@@ -339,92 +377,302 @@ export function AdminDashboard() {
               <SelectItem value="subsanada">Subsanada</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="w-44">
-          <Select value={filterTipo} onValueChange={setFilterTipo}>
-            <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+
+          <Select
+            value={tipoFiltro}
+            onValueChange={(value) => setTipoFiltro(value as FiltroTipo)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Filtrar por tipo" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los tipos</SelectItem>
               <SelectItem value="tardanza">Tardanza</SelectItem>
               <SelectItem value="inasistencia">Inasistencia</SelectItem>
-              <SelectItem value="incumplimiento">Incumplimiento</SelectItem>
-              <SelectItem value="permiso">Permiso</SelectItem>
-              <SelectItem value="reprogramacion">Reprogramación</SelectItem>
-              <SelectItem value="otro">Otro</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Table */}
-      <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-muted/50 border-b">
-                <th className="text-left px-4 py-3 font-semibold text-foreground">Código</th>
-                <th className="text-left px-4 py-3 font-semibold text-foreground">Docente</th>
-                <th className="text-left px-4 py-3 font-semibold text-foreground hidden md:table-cell">Tipo</th>
-                <th className="text-left px-4 py-3 font-semibold text-foreground hidden lg:table-cell">Curso</th>
-                <th className="text-left px-4 py-3 font-semibold text-foreground">Estado</th>
-                <th className="text-left px-4 py-3 font-semibold text-foreground hidden md:table-cell">Fecha</th>
-                <th className="text-right px-4 py-3 font-semibold text-foreground">Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((j) => (
-                <tr key={j.id} className="border-b hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-primary font-bold">{j.codigo_seguimiento}</td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{j.nombre_completo}</div>
-                    <div className="text-xs text-muted-foreground">{j.correo_institucional}</div>
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell capitalize">{getTipoLabel(j.tipo_justificacion)}</td>
-                  <td className="px-4 py-3 hidden lg:table-cell text-muted-foreground">{j.curso_asignatura}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${getEstadoColor(j.estado)}`}>
-                      {estadoIcons[j.estado]}
-                      <span className="hidden sm:inline">{getEstadoLabel(j.estado)}</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">
-                    {new Date(j.fecha_registro).toLocaleDateString("es-PE")}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedId(j.id)}>
-                      <Eye className="h-4 w-4" />
-                      Ver
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    No se encontraron registros
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {!isSupabaseConfigured() && (
-        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-sm text-muted-foreground font-[family-name:var(--font-body)]">
-          <strong className="text-foreground">Nota:</strong> Supabase no está configurado. Se muestran datos de demostración. Configure VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY para datos reales.
+      {/* Error */}
+      {error && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
         </div>
       )}
-    </div>
-  );
-}
 
-function Detail({ label, value, capitalize: cap }: { label: string; value: string; capitalize?: boolean }) {
-  return (
-    <div className="bg-surface rounded-lg p-3 border">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`text-sm font-medium text-foreground ${cap ? "capitalize" : ""}`}>{value}</div>
+      {/* Tabla */}
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg">Solicitudes registradas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Cargando solicitudes...
+            </div>
+          ) : filteredSolicitudes.length === 0 ? (
+            <div className="py-16 text-center text-muted-foreground">
+              No se encontraron solicitudes con los filtros actuales.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="px-3 py-3 font-semibold">Código</th>
+                    <th className="px-3 py-3 font-semibold">Docente</th>
+                    <th className="px-3 py-3 font-semibold">Correo</th>
+                    <th className="px-3 py-3 font-semibold">Escuela</th>
+                    <th className="px-3 py-3 font-semibold">Tipo</th>
+                    <th className="px-3 py-3 font-semibold">Fecha</th>
+                    <th className="px-3 py-3 font-semibold">Estado</th>
+                    <th className="px-3 py-3 font-semibold">Evidencia</th>
+                    <th className="px-3 py-3 font-semibold text-right">
+                      Acción
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSolicitudes.map((item) => (
+                    <tr key={item.id} className="border-b last:border-0">
+                      <td className="px-3 py-4 font-medium text-foreground">
+                        {item.codigo_seguimiento}
+                      </td>
+                      <td className="px-3 py-4">{item.nombre_completo}</td>
+                      <td className="px-3 py-4">{item.correo_institucional}</td>
+                      <td className="px-3 py-4">{item.facultad_area}</td>
+                      <td className="px-3 py-4">
+                        {getTipoLabel(item.tipo_justificacion)}
+                      </td>
+                      <td className="px-3 py-4">{item.fecha_incidencia}</td>
+                      <td className="px-3 py-4">
+                        <Badge
+                          variant="outline"
+                          className={getEstadoColor(item.estado)}
+                        >
+                          {getEstadoLabel(item.estado)}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-4">
+                        {item.archivos_adjuntos.length > 0 ? (
+                          <a
+                            href={item.archivos_adjuntos[0].url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-medium text-primary hover:underline"
+                          >
+                            Ver archivo
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">Sin archivo</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-4 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => openDetail(item)}
+                        >
+                          <Eye className="h-4 w-4" />
+                          Ver detalle
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal detalle */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+          {selected && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl">
+                  Detalle de solicitud
+                </DialogTitle>
+                <DialogDescription>
+                  Revisión administrativa de la justificación registrada.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge variant="outline" className={getEstadoColor(selected.estado)}>
+                    {getEstadoLabel(selected.estado)}
+                  </Badge>
+                  <Badge variant="secondary">
+                    {getTipoLabel(selected.tipo_justificacion)}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    Código: {selected.codigo_seguimiento}
+                  </span>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <DetailItem label="Docente" value={selected.nombre_completo} />
+                  <DetailItem
+                    label="Correo institucional"
+                    value={selected.correo_institucional}
+                  />
+                  <DetailItem
+                    label="DNI / Código docente"
+                    value={selected.dni_codigo_docente}
+                  />
+                  <DetailItem label="Celular" value={selected.celular} />
+                  <DetailItem label="Escuela" value={selected.facultad_area} />
+                  <DetailItem
+                    label="Curso / Asignatura"
+                    value={selected.curso_asignatura}
+                  />
+                  <DetailItem
+                    label="Fecha de la incidencia"
+                    value={selected.fecha_incidencia}
+                  />
+                  <DetailItem
+                    label="Hora de la incidencia"
+                    value={selected.hora_incidencia}
+                  />
+                  <DetailItem label="Turno" value={selected.turno} />
+                  <DetailItem label="Modalidad" value={selected.modalidad} />
+                  <DetailItem
+                    label="Aula"
+                    value={selected.sede_aula_enlace || "—"}
+                  />
+                  <DetailItem
+                    label="Fecha de registro"
+                    value={new Date(selected.fecha_registro).toLocaleString("es-PE")}
+                  />
+                </div>
+
+                <Card className="border-border/60">
+                  <CardContent className="p-5">
+                    <h4 className="mb-2 text-base font-semibold text-foreground">
+                      Descripción de lo sucedido
+                    </h4>
+                    <p className="text-sm leading-6 text-foreground/90">
+                      {selected.descripcion}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/60">
+                  <CardContent className="space-y-4 p-5">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <h4 className="text-base font-semibold text-foreground">
+                        Evidencia adjunta
+                      </h4>
+                    </div>
+
+                    {selected.archivos_adjuntos.length > 0 ? (
+                      <a
+                        href={selected.archivos_adjuntos[0].url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 font-medium text-primary hover:underline"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Abrir evidencia
+                      </a>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No se adjuntó evidencia.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/60">
+                  <CardContent className="space-y-4 p-5">
+                    <h4 className="text-base font-semibold text-foreground">
+                      Revisión administrativa
+                    </h4>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-foreground">
+                          Estado de la solicitud
+                        </label>
+                        <Select
+                          value={nuevoEstado}
+                          onValueChange={(value) =>
+                            setNuevoEstado(value as EstadoJustificacion)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccione estado" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pendiente">Pendiente</SelectItem>
+                            <SelectItem value="en_revision">En revisión</SelectItem>
+                            <SelectItem value="aprobada">Aprobada</SelectItem>
+                            <SelectItem value="observada">Observada</SelectItem>
+                            <SelectItem value="rechazada">Rechazada</SelectItem>
+                            <SelectItem value="subsanada">Subsanada</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-foreground">
+                          Última revisión
+                        </label>
+                        <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-foreground">
+                          {selected.fecha_revision
+                            ? new Date(selected.fecha_revision).toLocaleString(
+                                "es-PE",
+                              )
+                            : "Aún no revisado"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-foreground">
+                        Observaciones administrativas
+                      </label>
+                      <Textarea
+                        rows={4}
+                        value={observaciones}
+                        onChange={(e) => setObservaciones(e.target.value)}
+                        placeholder="Ingrese observaciones de coordinación..."
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-3 pt-2 md:flex-row md:justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => setOpen(false)}
+                        disabled={saving}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button onClick={handleGuardarRevision} disabled={saving}>
+                        {saving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Guardando...
+                          </>
+                        ) : (
+                          "Guardar cambios"
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
