@@ -1,52 +1,41 @@
-import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  generarCodigoSeguimiento,
-  type ArchivoAdjunto,
-  type EstadoJustificacion,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Loader2,
+  Eye,
+  FileText,
+  CalendarDays,
+  Mail,
+  User,
+  BookOpen,
+  Building2,
+  Clock3,
+} from "lucide-react";
+import {
+  mockJustificaciones,
   type Justificacion,
+  getEstadoColor,
+  getEstadoLabel,
+  getTipoLabel,
 } from "@/lib/justificacion";
-import type {
-  JustificacionInsert,
-  JustificacionRow,
-  JustificacionUpdate,
-} from "@/lib/supabase-types";
+import { useRole } from "@/lib/roles";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 
-const BUCKET_NAME = "evidencias_justificaciones";
-
-type ServiceResult<T> = {
-  data: T | null;
-  error: string | null;
-};
-
-type UploadResult = {
-  url: string | null;
-  path: string | null;
-  error: string | null;
-};
-
-function sanitizeFileName(fileName: string): string {
-  return fileName
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/[^a-zA-Z0-9._-]/g, "")
-    .toLowerCase();
-}
-
-function buildAdjuntos(row: JustificacionRow): ArchivoAdjunto[] {
-  if (!row.archivo_url) return [];
-
-  return [
-    {
-      nombre: row.archivo_path?.split("/").pop() || "evidencia",
-      tipo: row.archivo_tipo || "archivo",
-      tamano: 0,
-      url: row.archivo_url,
-    },
-  ];
-}
-
-export function rowToJustificacion(row: JustificacionRow): Justificacion {
+function mapRowToJustificacion(row: any): Justificacion {
   return {
     id: row.id,
     codigo_seguimiento: row.codigo_seguimiento,
@@ -54,25 +43,31 @@ export function rowToJustificacion(row: JustificacionRow): Justificacion {
     dni_codigo_docente: row.dni_codigo_docente,
     correo_institucional: row.correo_docente,
     celular: row.celular,
-    facultad_area: row.facultad_area, // En UI se muestra como "Escuela"
+    facultad_area: row.facultad_area,
     curso_asignatura: row.curso_asignatura,
     tipo_justificacion: row.tipo_justificacion,
     fecha_incidencia: row.fecha_incidencia,
     hora_incidencia: row.hora_incidencia,
-    turno: row.turno as "mañana" | "tarde" | "noche",
-    modalidad: row.modalidad as "presencial" | "virtual" | "semipresencial",
+    turno: row.turno,
+    modalidad: row.modalidad,
     sede_aula_enlace: row.sede_aula_enlace || "",
     descripcion: row.descripcion,
-
-    // Campos legacy: se mantienen para compatibilidad
-    cantidad_estudiantes_afectados: undefined,
     motivo_principal: row.descripcion,
     impacto_academico: "",
     accion_correctiva: "",
+    cantidad_estudiantes_afectados: undefined,
     fecha_regularizacion: undefined,
     declaracion_jurada: false,
-
-    archivos_adjuntos: buildAdjuntos(row),
+    archivos_adjuntos: row.archivo_url
+      ? [
+          {
+            nombre: row.archivo_path?.split("/").pop() || "evidencia",
+            tipo: row.archivo_tipo || "archivo",
+            tamano: 0,
+            url: row.archivo_url,
+          },
+        ]
+      : [],
     estado: row.estado,
     observaciones_admin: row.observaciones_admin || "",
     fecha_registro: row.fecha_registro,
@@ -80,301 +75,344 @@ export function rowToJustificacion(row: JustificacionRow): Justificacion {
   };
 }
 
-export async function generarCodigoSeguimientoUnico(): Promise<string> {
-  if (!isSupabaseConfigured()) {
-    return generarCodigoSeguimiento();
-  }
-
-  const year = new Date().getFullYear();
-  const prefix = `JBM-${year}-`;
-
-  const { data, error } = await supabase
-    .from("justificaciones_docentes")
-    .select("codigo_seguimiento")
-    .ilike("codigo_seguimiento", `${prefix}%`)
-    .order("codigo_seguimiento", { ascending: false })
-    .limit(1);
-
-  if (error || !data || data.length === 0) {
-    return `${prefix}0001`;
-  }
-
-  const ultimoCodigo = data[0].codigo_seguimiento;
-  const ultimoNumero = Number(ultimoCodigo.replace(prefix, "")) || 0;
-  const siguienteNumero = String(ultimoNumero + 1).padStart(4, "0");
-
-  return `${prefix}${siguienteNumero}`;
+function DetailItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+}) {
+  return (
+    <div className="rounded-lg border bg-muted/30 p-4">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p className="text-sm font-medium text-foreground">{value || "—"}</p>
+    </div>
+  );
 }
 
-export async function subirEvidencia(
-  file: File,
-  codigoSeguimiento: string,
-): Promise<UploadResult> {
-  if (!isSupabaseConfigured()) {
-    return {
-      url: null,
-      path: null,
-      error: "Supabase no está configurado.",
-    };
-  }
+export function DocenteHistorial() {
+  const { email } = useRole();
+  const [loading, setLoading] = useState(true);
+  const [solicitudes, setSolicitudes] = useState<Justificacion[]>([]);
+  const [selected, setSelected] = useState<Justificacion | null>(null);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  try {
-    const extension = file.name.split(".").pop() || "bin";
-    const safeName = sanitizeFileName(file.name.replace(/\.[^/.]+$/, ""));
-    const timestamp = Date.now();
-    const filePath = `${codigoSeguimiento}/${timestamp}-${safeName}.${extension}`;
+  const loadSolicitudes = async () => {
+    setLoading(true);
+    setError(null);
 
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
+    try {
+      const correo = (email || "").toLowerCase().trim();
 
-    if (uploadError) {
-      return {
-        url: null,
-        path: null,
-        error: uploadError.message,
-      };
+      if (!correo) {
+        setSolicitudes([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!isSupabaseConfigured()) {
+        const filtered = mockJustificaciones
+          .filter(
+            (item) => item.correo_institucional.toLowerCase().trim() === correo,
+          )
+          .sort((a, b) => b.fecha_registro.localeCompare(a.fecha_registro));
+
+        setSolicitudes(filtered);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("justificaciones_docentes")
+        .select("*")
+        .eq("correo_docente", correo)
+        .order("fecha_registro", { ascending: false });
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+
+      const mapped = (data || []).map(mapRowToJustificacion);
+      setSolicitudes(mapped);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudieron cargar tus solicitudes.");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const { data: publicData } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(filePath);
+  useEffect(() => {
+    loadSolicitudes();
+  }, [email]);
 
-    return {
-      url: publicData.publicUrl,
-      path: filePath,
-      error: null,
-    };
-  } catch (err) {
-    console.error("Error al subir evidencia:", err);
-    return {
-      url: null,
-      path: null,
-      error: "No se pudo subir la evidencia.",
-    };
-  }
-}
+  return (
+    <div className="space-y-8">
+      <div className="rounded-2xl border bg-card p-6 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">
+              Mis solicitudes
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Aquí puede revisar el estado de sus justificaciones registradas.
+            </p>
+          </div>
 
-export async function crearJustificacion(
-  payload: JustificacionInsert,
-): Promise<ServiceResult<Justificacion>> {
-  if (!isSupabaseConfigured()) {
-    return {
-      data: null,
-      error: "Supabase no está configurado.",
-    };
-  }
+          <Button variant="outline" onClick={loadSolicitudes} disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Actualizando...
+              </>
+            ) : (
+              "Actualizar"
+            )}
+          </Button>
+        </div>
+      </div>
 
-  try {
-    const { data, error } = await supabase
-      .from("justificaciones_docentes")
-      .insert(payload)
-      .select("*")
-      .single();
+      {error && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
-    if (error) {
-      return {
-        data: null,
-        error: error.message,
-      };
-    }
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg">Historial de justificaciones</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Cargando solicitudes...
+            </div>
+          ) : solicitudes.length === 0 ? (
+            <div className="py-16 text-center">
+              <p className="text-base font-medium text-foreground">
+                No se encontraron solicitudes registradas.
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Cuando registre una justificación, aparecerá listada en esta
+                sección.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {solicitudes.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-xl border bg-background p-5 shadow-sm"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={getEstadoColor(item.estado)}
+                        >
+                          {getEstadoLabel(item.estado)}
+                        </Badge>
+                        <Badge variant="secondary">
+                          {getTipoLabel(item.tipo_justificacion)}
+                        </Badge>
+                      </div>
 
-    return {
-      data: rowToJustificacion(data),
-      error: null,
-    };
-  } catch (err) {
-    console.error("Error al crear justificación:", err);
-    return {
-      data: null,
-      error: "No se pudo registrar la justificación.",
-    };
-  }
-}
+                      <div>
+                        <p className="text-lg font-semibold text-foreground">
+                          {item.codigo_seguimiento}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Registrado el{" "}
+                          {new Date(item.fecha_registro).toLocaleString("es-PE")}
+                        </p>
+                      </div>
 
-export async function listarJustificacionesPorCorreo(
-  correo: string,
-): Promise<ServiceResult<Justificacion[]>> {
-  if (!isSupabaseConfigured()) {
-    return {
-      data: [],
-      error: "Supabase no está configurado.",
-    };
-  }
+                      <div className="grid gap-2 text-sm text-foreground/90 md:grid-cols-2">
+                        <p>
+                          <span className="font-medium">Curso:</span>{" "}
+                          {item.curso_asignatura}
+                        </p>
+                        <p>
+                          <span className="font-medium">Escuela:</span>{" "}
+                          {item.facultad_area}
+                        </p>
+                        <p>
+                          <span className="font-medium">Fecha de incidencia:</span>{" "}
+                          {item.fecha_incidencia}
+                        </p>
+                        <p>
+                          <span className="font-medium">Hora:</span>{" "}
+                          {item.hora_incidencia}
+                        </p>
+                      </div>
 
-  try {
-    const correoNormalizado = correo.trim().toLowerCase();
+                      {item.observaciones_admin ? (
+                        <div className="rounded-lg bg-muted/40 p-3 text-sm">
+                          <span className="font-medium text-foreground">
+                            Observación administrativa:
+                          </span>{" "}
+                          <span className="text-foreground/80">
+                            {item.observaciones_admin}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
+                          Aún no hay observaciones administrativas registradas.
+                        </div>
+                      )}
+                    </div>
 
-    const { data, error } = await supabase
-      .from("justificaciones_docentes")
-      .select("*")
-      .eq("correo_docente", correoNormalizado)
-      .order("fecha_registro", { ascending: false });
+                    <div className="flex shrink-0 items-center">
+                      <Button
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => {
+                          setSelected(item);
+                          setOpen(true);
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                        Ver detalle
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-    if (error) {
-      return {
-        data: null,
-        error: error.message,
-      };
-    }
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+          {selected && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl">
+                  Detalle de mi solicitud
+                </DialogTitle>
+                <DialogDescription>
+                  Información registrada y estado actual de la justificación.
+                </DialogDescription>
+              </DialogHeader>
 
-    return {
-      data: (data || []).map(rowToJustificacion),
-      error: null,
-    };
-  } catch (err) {
-    console.error("Error al listar justificaciones por correo:", err);
-    return {
-      data: null,
-      error: "No se pudieron cargar las solicitudes del docente.",
-    };
-  }
-}
+              <div className="space-y-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge
+                    variant="outline"
+                    className={getEstadoColor(selected.estado)}
+                  >
+                    {getEstadoLabel(selected.estado)}
+                  </Badge>
+                  <Badge variant="secondary">
+                    {getTipoLabel(selected.tipo_justificacion)}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    Código: {selected.codigo_seguimiento}
+                  </span>
+                </div>
 
-export async function listarTodasLasJustificaciones(): Promise<
-  ServiceResult<Justificacion[]>
-> {
-  if (!isSupabaseConfigured()) {
-    return {
-      data: [],
-      error: "Supabase no está configurado.",
-    };
-  }
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <DetailItem label="Docente" value={selected.nombre_completo} />
+                  <DetailItem
+                    label="Correo institucional"
+                    value={selected.correo_institucional}
+                  />
+                  <DetailItem
+                    label="DNI / Código docente"
+                    value={selected.dni_codigo_docente}
+                  />
+                  <DetailItem label="Celular" value={selected.celular} />
+                  <DetailItem label="Escuela" value={selected.facultad_area} />
+                  <DetailItem
+                    label="Curso / Asignatura"
+                    value={selected.curso_asignatura}
+                  />
+                  <DetailItem
+                    label="Fecha de la incidencia"
+                    value={selected.fecha_incidencia}
+                  />
+                  <DetailItem
+                    label="Hora de la incidencia"
+                    value={selected.hora_incidencia}
+                  />
+                  <DetailItem label="Turno" value={selected.turno} />
+                  <DetailItem label="Modalidad" value={selected.modalidad} />
+                  <DetailItem
+                    label="Aula"
+                    value={selected.sede_aula_enlace || "—"}
+                  />
+                  <DetailItem
+                    label="Fecha de registro"
+                    value={new Date(selected.fecha_registro).toLocaleString("es-PE")}
+                  />
+                </div>
 
-  try {
-    const { data, error } = await supabase
-      .from("justificaciones_docentes")
-      .select("*")
-      .order("fecha_registro", { ascending: false });
+                <Card className="border-border/60">
+                  <CardContent className="p-5">
+                    <h3 className="mb-2 text-base font-semibold text-foreground">
+                      Descripción de lo sucedido
+                    </h3>
+                    <p className="text-sm leading-6 text-foreground/90">
+                      {selected.descripcion}
+                    </p>
+                  </CardContent>
+                </Card>
 
-    if (error) {
-      return {
-        data: null,
-        error: error.message,
-      };
-    }
+                <Card className="border-border/60">
+                  <CardContent className="p-5">
+                    <h3 className="mb-3 text-base font-semibold text-foreground">
+                      Evidencia adjunta
+                    </h3>
 
-    return {
-      data: (data || []).map(rowToJustificacion),
-      error: null,
-    };
-  } catch (err) {
-    console.error("Error al listar todas las justificaciones:", err);
-    return {
-      data: null,
-      error: "No se pudieron cargar las solicitudes.",
-    };
-  }
-}
+                    {selected.archivos_adjuntos.length > 0 ? (
+                      <a
+                        href={selected.archivos_adjuntos[0].url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 font-medium text-primary hover:underline"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Abrir evidencia
+                      </a>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No se adjuntó evidencia en esta solicitud.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
 
-export async function obtenerJustificacionPorId(
-  id: string,
-): Promise<ServiceResult<Justificacion>> {
-  if (!isSupabaseConfigured()) {
-    return {
-      data: null,
-      error: "Supabase no está configurado.",
-    };
-  }
+                <Card className="border-border/60">
+                  <CardContent className="p-5">
+                    <h3 className="mb-3 text-base font-semibold text-foreground">
+                      Observaciones de coordinación
+                    </h3>
 
-  try {
-    const { data, error } = await supabase
-      .from("justificaciones_docentes")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error) {
-      return {
-        data: null,
-        error: error.message,
-      };
-    }
-
-    return {
-      data: rowToJustificacion(data),
-      error: null,
-    };
-  } catch (err) {
-    console.error("Error al obtener justificación:", err);
-    return {
-      data: null,
-      error: "No se pudo obtener la justificación.",
-    };
-  }
-}
-
-export async function actualizarJustificacion(
-  id: string,
-  payload: JustificacionUpdate,
-): Promise<ServiceResult<Justificacion>> {
-  if (!isSupabaseConfigured()) {
-    return {
-      data: null,
-      error: "Supabase no está configurado.",
-    };
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from("justificaciones_docentes")
-      .update(payload)
-      .eq("id", id)
-      .select("*")
-      .single();
-
-    if (error) {
-      return {
-        data: null,
-        error: error.message,
-      };
-    }
-
-    return {
-      data: rowToJustificacion(data),
-      error: null,
-    };
-  } catch (err) {
-    console.error("Error al actualizar justificación:", err);
-    return {
-      data: null,
-      error: "No se pudo actualizar la justificación.",
-    };
-  }
-}
-
-export async function actualizarRevisionJustificacion(params: {
-  id: string;
-  estado: EstadoJustificacion;
-  observaciones_admin?: string;
-}): Promise<ServiceResult<Justificacion>> {
-  return actualizarJustificacion(params.id, {
-    estado: params.estado,
-    observaciones_admin: params.observaciones_admin || null,
-    fecha_revision: new Date().toISOString(),
-  });
-}
-
-export async function eliminarEvidenciaPorPath(
-  path: string,
-): Promise<{ error: string | null }> {
-  if (!isSupabaseConfigured()) {
-    return { error: "Supabase no está configurado." };
-  }
-
-  try {
-    const { error } = await supabase.storage.from(BUCKET_NAME).remove([path]);
-
-    if (error) {
-      return { error: error.message };
-    }
-
-    return { error: null };
-  } catch (err) {
-    console.error("Error al eliminar evidencia:", err);
-    return { error: "No se pudo eliminar la evidencia." };
-  }
+                    {selected.observaciones_admin ? (
+                      <p className="text-sm leading-6 text-foreground/90">
+                        {selected.observaciones_admin}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Aún no se han registrado observaciones para esta
+                        solicitud.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
