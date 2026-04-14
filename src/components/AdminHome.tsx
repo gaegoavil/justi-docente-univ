@@ -14,6 +14,7 @@ import {
   FileText,
   ArrowRight,
   Loader2,
+  TrendingUp,
 } from "lucide-react";
 import {
   getEstadoLabel,
@@ -63,14 +64,26 @@ export function AdminHome() {
 
   const recientes = [...data]
     .sort((a, b) => new Date(b.fecha_registro).getTime() - new Date(a.fecha_registro).getTime())
-    .slice(0, 8);
+    .slice(0, 5);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <>
       {/* HERO ADMINISTRATIVO */}
       <section className="relative min-h-[420px] flex items-center overflow-hidden">
-        <div className="absolute inset-0 bg-[hsl(var(--primary))]/95" />
-        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--institutional-dark))]/80 to-[hsl(var(--primary))]/90" />
+        <div className="absolute inset-0">
+          <img
+            src="/hero-mesa-ayuda.jpg"
+            alt="Campus Universidad Jaime Bausate y Meza"
+            className="w-full h-full object-cover brightness-[0.2] saturate-[0.3]"
+            width={1920}
+            height={1080}
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+          <div className="absolute inset-0 bg-[hsl(var(--institutional-dark))]/90" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--institutional-dark))]/80 to-[hsl(var(--primary))]/85" />
+        </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 py-16 w-full">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -80,13 +93,13 @@ export function AdminHome() {
           >
             <div className="inline-flex items-center gap-2 bg-primary-foreground/15 backdrop-blur-sm px-4 py-1.5 rounded-full text-sm text-primary-foreground mb-6 border border-primary-foreground/25">
               <ShieldCheck className="h-4 w-4" />
-              Panel de Coordinación Académica
+              Coordinación Académica
             </div>
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-primary-foreground leading-tight mb-4">
               Panel de Gestión de Justificaciones Docentes
             </h1>
             <p className="text-lg md:text-xl text-primary-foreground/80 mb-8 leading-relaxed">
-              Centro de revisión y seguimiento institucional. Gestión de incidencias, evidencias y estados de revisión.
+              Centro de revisión, seguimiento y control institucional de incidencias docentes.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link to="/admin">
@@ -106,7 +119,7 @@ export function AdminHome() {
         </div>
       </section>
 
-      {/* RESUMEN DE MÉTRICAS */}
+      {/* KPI CARDS */}
       <section className="py-12 bg-surface">
         <div className="max-w-7xl mx-auto px-4">
           <motion.div
@@ -119,7 +132,7 @@ export function AdminHome() {
               Estado de atención de incidencias
             </h2>
             <p className="text-muted-foreground">
-              Seguimiento y control institucional — Resumen general de solicitudes
+              Resumen general de solicitudes registradas en el sistema
             </p>
           </motion.div>
 
@@ -172,7 +185,7 @@ export function AdminHome() {
                   Panel Administrativo
                 </h3>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Gestión completa de solicitudes, filtros avanzados y acciones de revisión.
+                  Dashboard completo con métricas, filtros avanzados y gestión integral de solicitudes.
                 </p>
                 <span className="text-primary text-sm font-semibold flex items-center gap-1">
                   Acceder <ArrowRight className="h-4 w-4" />
@@ -185,10 +198,10 @@ export function AdminHome() {
                   <Clock className="h-6 w-6 text-yellow-700" />
                 </div>
                 <h3 className="font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                  Solicitudes pendientes
+                  Solicitudes
                 </h3>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Revise las justificaciones pendientes de atención y asigne estados.
+                  Listado operativo para revisión y seguimiento de casos individuales.
                 </p>
                 <span className="text-primary text-sm font-semibold flex items-center gap-1">
                   Revisar <ArrowRight className="h-4 w-4" />
@@ -198,7 +211,7 @@ export function AdminHome() {
             <Link to="/reportes" className="group">
               <div className="bg-card rounded-xl border p-6 shadow-sm hover:shadow-md transition-shadow h-full">
                 <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center mb-4">
-                  <FileText className="h-6 w-6 text-green-700" />
+                  <TrendingUp className="h-6 w-6 text-green-700" />
                 </div>
                 <h3 className="font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
                   Reportes
@@ -215,15 +228,15 @@ export function AdminHome() {
         </div>
       </section>
 
-      {/* SOLICITUDES RECIENTES */}
+      {/* ACTIVIDAD RECIENTE — solo las últimas 5, sin tabla completa */}
       <section className="py-12 bg-surface">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-foreground">Solicitudes recientes</h2>
-              <p className="text-muted-foreground text-sm">Últimas justificaciones registradas en el sistema</p>
+              <h2 className="text-2xl font-bold text-foreground">Actividad reciente</h2>
+              <p className="text-muted-foreground text-sm">Últimas solicitudes registradas</p>
             </div>
-            <Link to="/admin">
+            <Link to="/solicitudes">
               <Button variant="outline" size="sm">
                 Ver todas <ArrowRight className="h-4 w-4" />
               </Button>
@@ -240,44 +253,32 @@ export function AdminHome() {
               <p className="text-muted-foreground">No hay solicitudes registradas aún.</p>
             </div>
           ) : (
-            <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-muted/50 border-b">
-                      <th className="text-left px-4 py-3 font-semibold text-foreground">Código</th>
-                      <th className="text-left px-4 py-3 font-semibold text-foreground">Docente</th>
-                      <th className="text-left px-4 py-3 font-semibold text-foreground hidden md:table-cell">Correo</th>
-                      <th className="text-left px-4 py-3 font-semibold text-foreground hidden md:table-cell">Tipo</th>
-                      <th className="text-left px-4 py-3 font-semibold text-foreground">Estado</th>
-                      <th className="text-left px-4 py-3 font-semibold text-foreground hidden lg:table-cell">Fecha</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recientes.map((j) => (
-                      <tr key={j.id} className="border-b hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-3 font-mono text-xs text-primary font-bold">{j.codigo_seguimiento}</td>
-                        <td className="px-4 py-3 font-medium">{j.nombre_completo}</td>
-                        <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{j.correo_institucional}</td>
-                        <td className="px-4 py-3 hidden md:table-cell capitalize">{getTipoLabel(j.tipo_justificacion)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${getEstadoColor(j.estado)}`}>
-                            {estadoIcons[j.estado]}
-                            {getEstadoLabel(j.estado)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 hidden lg:table-cell text-muted-foreground">
-                          {new Date(j.fecha_registro).toLocaleDateString("es-PE")}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="space-y-3">
+              {recientes.map((j) => (
+                <div key={j.id} className="bg-card rounded-xl border p-4 shadow-sm flex items-center gap-4 flex-wrap">
+                  <div className="flex-shrink-0">
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${getEstadoColor(j.estado)}`}>
+                      {estadoIcons[j.estado]}
+                      {getEstadoLabel(j.estado)}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-foreground truncate">{j.nombre_completo}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {j.codigo_seguimiento} · {getTipoLabel(j.tipo_justificacion)} · {new Date(j.fecha_registro).toLocaleDateString("es-PE")}
+                    </div>
+                  </div>
+                  <Link to="/admin">
+                    <Button variant="ghost" size="sm" className="text-primary">
+                      Ver detalle <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  </Link>
+                </div>
+              ))}
             </div>
           )}
         </div>
       </section>
-    </div>
+    </>
   );
 }
