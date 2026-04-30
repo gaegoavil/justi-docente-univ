@@ -13,10 +13,7 @@ import {
   getTipoLabel,
   type Justificacion,
 } from "@/lib/justificacion";
-import {
-  obtenerTodasJustificaciones,
-  rowToJustificacion,
-} from "@/lib/supabase-service";
+import { listarTodasLasJustificaciones } from "@/lib/supabase-service";
 import { isSupabaseConfigured } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/solicitudes")({
@@ -46,13 +43,13 @@ function SolicitudesPage() {
   const [filterEstado, setFilterEstado] = useState("todos");
   const [filterTipo, setFilterTipo] = useState("todos");
 
-  useEffect(() => {
-    (async () => {
-      const rows = await obtenerTodasJustificaciones();
-      setData(rows);
-      setLoading(false);
-    })();
-  }, []);
+useEffect(() => {
+  (async () => {
+    const result = await listarTodasLasJustificaciones();
+    setData(result.data || []);
+    setLoading(false);
+  })();
+}, []);
 
   if (!isCoordinador) {
     return (
