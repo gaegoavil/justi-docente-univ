@@ -5,12 +5,6 @@ import { Button } from "@/components/ui/button";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { useRole } from "@/lib/roles";
 
-const docenteItems = [
-  { label: "Inicio", to: "/" as const },
-  { label: "Registrar justificación", to: "/registrar" as const },
-  { label: "Mis solicitudes", to: "/consultar" as const },
-  { label: "Soporte", to: "/soporte" as const },
-];
 
 const coordinadorItems = [
   { label: "Inicio", to: "/" as const, icon: undefined },
