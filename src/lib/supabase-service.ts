@@ -270,6 +270,12 @@ export async function listarTodasLasJustificaciones(): Promise<
   }
 }
 
+export async function obtenerTodasJustificaciones(): Promise<Justificacion[]> {
+  const { data, error } = await listarTodasLasJustificaciones();
+  if (error || !data) return [];
+  return data;
+}
+
 export async function obtenerJustificacionPorId(
   id: string,
 ): Promise<ServiceResult<Justificacion>> {
