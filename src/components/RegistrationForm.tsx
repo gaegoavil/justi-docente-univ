@@ -61,20 +61,18 @@ export function RegistrationForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [form, setForm] = useState({
-    nombre_completo: "",
-    dni_codigo_docente: "",
-    correo_institucional: email || "",
-    celular: "",
-    facultad_area: "",
-    curso_asignatura: "",
-    tipo_justificacion: "",
-    hora_incidencia: "",
-    turno: "",
-    modalidad: "",
-    sede_aula_enlace: "",
-    descripcion: "",
-  });
+const [form, setForm] = useState({
+  nombre_completo: "",
+  dni_codigo_docente: "",
+  correo_institucional: email || "",
+  celular: "",
+  facultad_area: "",
+  curso_asignatura: "",
+  tipo_justificacion: "",
+  hora_incidencia: "",
+  modalidad: "",
+  descripcion: "",
+});
 
   const updateField = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -188,7 +186,6 @@ export function RegistrationForm() {
       e.tipo_justificacion = "Seleccione un tipo";
     if (!fechaIncidencia) e.fecha_incidencia = "Seleccione una fecha";
     if (!form.hora_incidencia) e.hora_incidencia = "Campo obligatorio";
-    if (!form.turno) e.turno = "Seleccione un turno";
     if (!form.modalidad) e.modalidad = "Seleccione modalidad";
 
     if (!form.descripcion.trim()) {
@@ -245,10 +242,10 @@ export function RegistrationForm() {
           curso_asignatura: form.curso_asignatura,
           tipo_justificacion: form.tipo_justificacion as any,
           fecha_incidencia: fechaIncidencia!.toISOString().split("T")[0],
-          hora_incidencia: form.hora_incidencia,
-          turno: form.turno,
-          modalidad: form.modalidad,
-          sede_aula_enlace: form.sede_aula_enlace || null,
+hora_incidencia: form.hora_incidencia,
+turno: "no especificado",
+modalidad: form.modalidad,
+sede_aula_enlace: null,
           cantidad_estudiantes_afectados: null,
           descripcion: form.descripcion,
           motivo_principal: form.descripcion,
@@ -287,19 +284,17 @@ export function RegistrationForm() {
         onReset={() => {
           setSubmitted(false);
           setForm({
-            nombre_completo: "",
-            dni_codigo_docente: "",
-            correo_institucional: email || "",
-            celular: "",
-            facultad_area: "",
-            curso_asignatura: "",
-            tipo_justificacion: "",
-            hora_incidencia: "",
-            turno: "",
-            modalidad: "",
-            sede_aula_enlace: "",
-            descripcion: "",
-          });
+  nombre_completo: "",
+  dni_codigo_docente: "",
+  correo_institucional: email || "",
+  celular: "",
+  facultad_area: "",
+  curso_asignatura: "",
+  tipo_justificacion: "",
+  hora_incidencia: "",
+  modalidad: "",
+  descripcion: "",
+});
           setArchivos([]);
           setArchivoFiles([]);
           setFechaIncidencia(undefined);
@@ -343,7 +338,7 @@ export function RegistrationForm() {
           </div>
 
           <div>
-            <Label htmlFor="dni">DNI o código de docente *</Label>
+            <Label htmlFor="dni">DNI *</Label>
             <Input
               id="dni"
               value={form.dni_codigo_docente}
@@ -407,7 +402,7 @@ export function RegistrationForm() {
           </div>
 
           <div>
-            <Label htmlFor="curso">Curso o asignatura *</Label>
+            <Label htmlFor="curso">Asignatura *</Label>
             <Input
               id="curso"
               value={form.curso_asignatura}
@@ -506,23 +501,15 @@ export function RegistrationForm() {
             <FieldError field="hora_incidencia" />
           </div>
 
-          <div>
-            <Label>Turno *</Label>
-            <Select
-              value={form.turno}
-              onValueChange={(v) => updateField("turno", v)}
-            >
-              <SelectTrigger className={errors.turno ? "border-destructive" : ""}>
-                <SelectValue placeholder="Seleccione turno" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mañana">Mañana</SelectItem>
-                <SelectItem value="tarde">Tarde</SelectItem>
-                <SelectItem value="noche">Noche</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldError field="turno" />
-          </div>
+         <div>
+  <Label htmlFor="aula">Aula</Label>
+  <Input
+    id="aula"
+    value={form.sede_aula_enlace}
+    onChange={(e) => updateField("sede_aula_enlace", e.target.value)}
+    placeholder="Ej: Aula 301"
+  />
+</div>
 
           <div>
             <Label>Modalidad *</Label>
