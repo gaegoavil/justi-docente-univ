@@ -85,11 +85,6 @@ export function Header() {
 
           {/* CTA + mobile toggle */}
           <div className="flex items-center gap-3">
-            {isDocente && (
-              <Link to="/registrar" className="hidden md:inline-flex">
-                <Button variant="accent" size="sm">Nueva justificación</Button>
-              </Link>
-            )}
             {isCoordinador && (
               <Link to="/solicitudes" className="hidden md:inline-flex">
                 <Button variant="accent" size="sm">
