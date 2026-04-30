@@ -112,19 +112,13 @@ function HomePage() {
               Mesa de Ayuda de Justificaciones Docentes
             </h1>
             <p className="text-lg md:text-xl text-primary-foreground/85 mb-8 leading-relaxed">
-              Plataforma institucional para el registro y seguimiento de tardanzas, inasistencias, permisos e incidencias académicas.
+              Plataforma institucional para el registro y seguimiento de tardanzas e inasistencias docentes.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link to="/registrar">
                 <Button variant="hero" size="xl">
                   <FileText className="h-5 w-5" />
                   Registrar justificación
-                </Button>
-              </Link>
-              <Link to="/consultar">
-                <Button variant="heroOutline" size="xl">
-                  <Search className="h-5 w-5" />
-                  Mis solicitudes
                 </Button>
               </Link>
             </div>
