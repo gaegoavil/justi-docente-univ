@@ -44,11 +44,7 @@ export function AdminHome() {
   useEffect(() => {
     (async () => {
       const rows = await obtenerTodasJustificaciones();
-      if (isSupabaseConfigured()) {
-        setData(rows.map(rowToJustificacion));
-      } else {
-        setData(rows as unknown as Justificacion[]);
-      }
+      setData(rows);
       setLoading(false);
     })();
   }, []);
