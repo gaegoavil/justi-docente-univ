@@ -134,13 +134,6 @@ export function Header() {
               </Link>
             ))}
 
-            {isDocente && (
-              <Link to="/registrar" onClick={() => setMobileOpen(false)}>
-                <Button variant="accent" size="sm" className="w-full mt-2">
-                  Nueva justificación
-                </Button>
-              </Link>
-            )}
             {isCoordinador && (
               <Link to="/solicitudes" onClick={() => setMobileOpen(false)}>
                 <Button variant="accent" size="sm" className="w-full mt-2">
