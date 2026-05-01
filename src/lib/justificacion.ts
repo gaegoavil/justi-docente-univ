@@ -17,7 +17,7 @@ export interface Justificacion {
   tipo_justificacion: "tardanza" | "inasistencia";
   fecha_incidencia: string;
   hora_incidencia: string;
-  turno: "mañana" | "tarde" | "noche";
+  turno?: "mañana" | "tarde" | "noche";
   modalidad: "presencial" | "virtual" | "semipresencial";
   sede_aula_enlace: string; // En UI ahora se muestra como "Aula"
   descripcion: string;
