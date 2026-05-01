@@ -59,7 +59,7 @@ export interface Database {
           tipo_justificacion: TipoJustificacion;
           fecha_incidencia: string;
           hora_incidencia: string;
-          turno: string;
+          turno: string | null;
           modalidad: string;
           sede_aula_enlace: string | null;
           cantidad_estudiantes_afectados: number | null;
@@ -91,7 +91,7 @@ export interface Database {
           tipo_justificacion: TipoJustificacion;
           fecha_incidencia: string;
           hora_incidencia: string;
-          turno: string;
+          turno?: string | null;
           modalidad: string;
           sede_aula_enlace?: string | null;
           cantidad_estudiantes_afectados?: number | null;
@@ -123,7 +123,7 @@ export interface Database {
           tipo_justificacion?: TipoJustificacion;
           fecha_incidencia?: string;
           hora_incidencia?: string;
-          turno?: string;
+          turno?: string | null;
           modalidad?: string;
           sede_aula_enlace?: string | null;
           cantidad_estudiantes_afectados?: number | null;
