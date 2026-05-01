@@ -34,6 +34,7 @@ export function Header() {
   const { isCoordinador, isDocente } = useRole();
 
   const navItems = isCoordinador ? coordinadorItems : docenteItems;
+  const isDocenteHome = isDocente && location.pathname === "/";
 
   return (
     <header className="sticky top-0 z-50 border-b-2 border-primary/20 bg-background/95 shadow-sm backdrop-blur-sm">
@@ -73,25 +74,27 @@ export function Header() {
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden items-center gap-1 lg:flex">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    location.pathname === item.to
-                      ? "bg-primary/10 text-primary"
-                      : "text-foreground/70 hover:bg-primary/5 hover:text-primary"
-                  }`}
-                >
-                  {Icon && <Icon className="h-3.5 w-3.5" />}
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          {!isDocenteHome && (
+            <nav className="hidden items-center gap-1 lg:flex">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                      location.pathname === item.to
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground/70 hover:bg-primary/5 hover:text-primary"
+                    }`}
+                  >
+                    {Icon && <Icon className="h-3.5 w-3.5" />}
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
 
           {/* CTA + mobile toggle */}
           <div className="flex items-center gap-3">
@@ -104,23 +107,25 @@ export function Header() {
               </Link>
             )}
 
-            <button
-              type="button"
-              className="rounded-md p-2 text-foreground hover:bg-muted lg:hidden"
-              onClick={() => setMobileOpen(!mobileOpen)}
-            >
-              {mobileOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
-            </button>
+            {!isDocenteHome && (
+              <button
+                type="button"
+                className="rounded-md p-2 text-foreground hover:bg-muted lg:hidden"
+                onClick={() => setMobileOpen(!mobileOpen)}
+              >
+                {mobileOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Mobile menu */}
-      {mobileOpen && (
+      {mobileOpen && !isDocenteHome && (
         <div className="border-t bg-background lg:hidden">
           <div className="space-y-1 px-4 py-3">
             <div className="mb-2 flex justify-center border-b pb-3">
