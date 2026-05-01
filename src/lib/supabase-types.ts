@@ -75,6 +75,9 @@ export interface Database {
           archivo_tipo: string | null;
           fecha_registro: string;
           fecha_revision: string | null;
+          reprogramacion_fecha: string | null;
+          reprogramacion_hora: string | null;
+          reprogramacion_observacion: string | null;
         };
         Insert: {
           id?: string;
@@ -104,6 +107,9 @@ export interface Database {
           archivo_tipo?: string | null;
           fecha_registro?: string;
           fecha_revision?: string | null;
+          reprogramacion_fecha?: string | null;
+          reprogramacion_hora?: string | null;
+          reprogramacion_observacion?: string | null;
         };
         Update: {
           id?: string;
@@ -133,6 +139,9 @@ export interface Database {
           archivo_tipo?: string | null;
           fecha_registro?: string;
           fecha_revision?: string | null;
+          reprogramacion_fecha?: string | null;
+          reprogramacion_hora?: string | null;
+          reprogramacion_observacion?: string | null;
         };
         Relationships: [];
       };
