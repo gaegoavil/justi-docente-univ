@@ -418,130 +418,108 @@ sede_aula_enlace: null,
       </div>
 
       {/* SECCIÓN B */}
-      <div className="rounded-xl border bg-card p-6 shadow-sm md:p-8">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-            B
-          </div>
-          <h2 className="text-xl font-bold text-foreground">
-            Datos de la Incidencia
-          </h2>
-        </div>
+<div className="rounded-xl border bg-card p-6 shadow-sm md:p-8">
+  <div className="mb-6 flex items-center gap-3">
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+      B
+    </div>
+    <h2 className="text-xl font-bold text-foreground">
+      Datos de la Incidencia
+    </h2>
+  </div>
 
-        <div className="grid gap-5 md:grid-cols-2">
-          <div>
-            <Label>Tipo de justificación *</Label>
-            <Select
-              value={form.tipo_justificacion}
-              onValueChange={(v) => updateField("tipo_justificacion", v)}
-            >
-              <SelectTrigger
-                className={
-                  errors.tipo_justificacion ? "border-destructive" : ""
-                }
-              >
-                <SelectValue placeholder="Seleccione tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tardanza">Tardanza</SelectItem>
-                <SelectItem value="inasistencia">Inasistencia</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldError field="tipo_justificacion" />
-          </div>
+  <div className="grid gap-5 md:grid-cols-2">
+    <div>
+      <Label>Tipo de justificación *</Label>
+      <Select
+        value={form.tipo_justificacion}
+        onValueChange={(v) => updateField("tipo_justificacion", v)}
+      >
+        <SelectTrigger
+          className={errors.tipo_justificacion ? "border-destructive" : ""}
+        >
+          <SelectValue placeholder="Seleccione tipo" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="tardanza">Tardanza</SelectItem>
+          <SelectItem value="inasistencia">Inasistencia</SelectItem>
+        </SelectContent>
+      </Select>
+      <FieldError field="tipo_justificacion" />
+    </div>
 
-          <div>
-            <Label>Fecha de la incidencia *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !fechaIncidencia && "text-muted-foreground",
-                    errors.fecha_incidencia && "border-destructive",
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {fechaIncidencia
-                    ? fechaIncidencia.toLocaleDateString("es-PE")
-                    : "Seleccione fecha"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={fechaIncidencia}
-                  onSelect={(d) => {
-                    setFechaIncidencia(d);
-                    if (errors.fecha_incidencia) {
-                      setErrors((prev) => {
-                        const next = { ...prev };
-                        delete next.fecha_incidencia;
-                        return next;
-                      });
-                    }
-                  }}
-                  className="pointer-events-auto p-3"
-                />
-              </PopoverContent>
-            </Popover>
-            <FieldError field="fecha_incidencia" />
-          </div>
+    <div>
+      <Label>Fecha de la incidencia *</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !fechaIncidencia && "text-muted-foreground",
+              errors.fecha_incidencia && "border-destructive",
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {fechaIncidencia
+              ? fechaIncidencia.toLocaleDateString("es-PE")
+              : "Seleccione fecha"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={fechaIncidencia}
+            onSelect={(d) => {
+              setFechaIncidencia(d);
+              if (errors.fecha_incidencia) {
+                setErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.fecha_incidencia;
+                  return next;
+                });
+              }
+            }}
+            className="pointer-events-auto p-3"
+          />
+        </PopoverContent>
+      </Popover>
+      <FieldError field="fecha_incidencia" />
+    </div>
 
-          <div>
-            <Label htmlFor="hora">Hora de la incidencia *</Label>
-            <Input
-              id="hora"
-              type="time"
-              value={form.hora_incidencia}
-              onChange={(e) => updateField("hora_incidencia", e.target.value)}
-              className={errors.hora_incidencia ? "border-destructive" : ""}
-            />
-            <FieldError field="hora_incidencia" />
-          </div>
+    <div>
+      <Label htmlFor="hora">Hora de la incidencia *</Label>
+      <Input
+        id="hora"
+        type="time"
+        value={form.hora_incidencia}
+        onChange={(e) => updateField("hora_incidencia", e.target.value)}
+        className={errors.hora_incidencia ? "border-destructive" : ""}
+      />
+      <FieldError field="hora_incidencia" />
+    </div>
 
-         <div>
-  <Label htmlFor="aula">Aula</Label>
-  <Input
-    id="aula"
-    value={form.sede_aula_enlace}
-    onChange={(e) => updateField("sede_aula_enlace", e.target.value)}
-    placeholder="Ej: Aula 301"
-  />
+    <div>
+      <Label>Modalidad *</Label>
+      <Select
+        value={form.modalidad}
+        onValueChange={(v) => updateField("modalidad", v)}
+      >
+        <SelectTrigger
+          className={errors.modalidad ? "border-destructive" : ""}
+        >
+          <SelectValue placeholder="Seleccione modalidad" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="presencial">Presencial</SelectItem>
+          <SelectItem value="virtual">Virtual</SelectItem>
+          <SelectItem value="semipresencial">Semipresencial</SelectItem>
+        </SelectContent>
+      </Select>
+      <FieldError field="modalidad" />
+    </div>
+  </div>
 </div>
-
-          <div>
-            <Label>Modalidad *</Label>
-            <Select
-              value={form.modalidad}
-              onValueChange={(v) => updateField("modalidad", v)}
-            >
-              <SelectTrigger
-                className={errors.modalidad ? "border-destructive" : ""}
-              >
-                <SelectValue placeholder="Seleccione modalidad" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="presencial">Presencial</SelectItem>
-                <SelectItem value="virtual">Virtual</SelectItem>
-                <SelectItem value="semipresencial">Semipresencial</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldError field="modalidad" />
-          </div>
-
-          <div>
-            <Label htmlFor="aula">Aula</Label>
-            <Input
-              id="aula"
-              value={form.sede_aula_enlace}
-              onChange={(e) => updateField("sede_aula_enlace", e.target.value)}
-              placeholder="Ej: Aula 301"
-            />
-          </div>
-        </div>
-      </div>
 
       {/* SECCIÓN C */}
       <div className="rounded-xl border bg-card p-6 shadow-sm md:p-8">
