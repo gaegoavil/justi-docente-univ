@@ -7,6 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -19,11 +21,8 @@ import {
   Eye,
   FileText,
   CalendarDays,
-  Mail,
-  User,
-  BookOpen,
-  Building2,
   Clock3,
+  CheckCircle2,
 } from "lucide-react";
 import {
   mockJustificaciones,
@@ -33,47 +32,13 @@ import {
   getTipoLabel,
 } from "@/lib/justificacion";
 import { useRole } from "@/lib/roles";
-import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
-
-function mapRowToJustificacion(row: any): Justificacion {
-  return {
-    id: row.id,
-    codigo_seguimiento: row.codigo_seguimiento,
-    nombre_completo: row.nombre_completo,
-    dni_codigo_docente: row.dni_codigo_docente,
-    correo_institucional: row.correo_docente,
-    celular: row.celular,
-    facultad_area: row.facultad_area,
-    curso_asignatura: row.curso_asignatura,
-    tipo_justificacion: row.tipo_justificacion,
-    fecha_incidencia: row.fecha_incidencia,
-    hora_incidencia: row.hora_incidencia,
-    turno: row.turno,
-    modalidad: row.modalidad,
-    sede_aula_enlace: row.sede_aula_enlace || "",
-    descripcion: row.descripcion,
-    motivo_principal: row.descripcion,
-    impacto_academico: "",
-    accion_correctiva: "",
-    cantidad_estudiantes_afectados: undefined,
-    fecha_regularizacion: undefined,
-    declaracion_jurada: false,
-    archivos_adjuntos: row.archivo_url
-      ? [
-          {
-            nombre: row.archivo_path?.split("/").pop() || "evidencia",
-            tipo: row.archivo_tipo || "archivo",
-            tamano: 0,
-            url: row.archivo_url,
-          },
-        ]
-      : [],
-    estado: row.estado,
-    observaciones_admin: row.observaciones_admin || "",
-    fecha_registro: row.fecha_registro,
-    fecha_revision: row.fecha_revision || undefined,
-  };
-}
+import {
+  isSupabaseConfigured,
+} from "@/integrations/supabase/client";
+import {
+  listarJustificacionesPorCorreo,
+  guardarReprogramacion,
+} from "@/lib/supabase-service";
 
 function DetailItem({
   label,
@@ -94,18 +59,25 @@ function DetailItem({
 
 export function DocenteHistorial() {
   const { email } = useRole();
+
   const [loading, setLoading] = useState(true);
   const [solicitudes, setSolicitudes] = useState<Justificacion[]>([]);
   const [selected, setSelected] = useState<Justificacion | null>(null);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [openReprogramacion, setOpenReprogramacion] = useState(false);
+  const [reprogFecha, setReprogFecha] = useState("");
+  const [reprogHora, setReprogHora] = useState("");
+  const [reprogObs, setReprogObs] = useState("");
+  const [savingReprog, setSavingReprog] = useState(false);
+
   const loadSolicitudes = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const correo = (email || "").toLowerCase().trim();
+      const correo = (email || "").trim().toLowerCase();
 
       if (!correo) {
         setSolicitudes([]);
@@ -116,7 +88,7 @@ export function DocenteHistorial() {
       if (!isSupabaseConfigured()) {
         const filtered = mockJustificaciones
           .filter(
-            (item) => item.correo_institucional.toLowerCase().trim() === correo,
+            (item) => item.correo_institucional.trim().toLowerCase() === correo,
           )
           .sort((a, b) => b.fecha_registro.localeCompare(a.fecha_registro));
 
@@ -125,20 +97,14 @@ export function DocenteHistorial() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("justificaciones_docentes")
-        .select("*")
-        .eq("correo_docente", correo)
-        .order("fecha_registro", { ascending: false });
+      const result = await listarJustificacionesPorCorreo(correo);
 
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
+      if (result.error) {
+        setError(result.error);
+        setSolicitudes([]);
+      } else {
+        setSolicitudes(result.data || []);
       }
-
-      const mapped = (data || []).map(mapRowToJustificacion);
-      setSolicitudes(mapped);
     } catch (err) {
       console.error(err);
       setError("No se pudieron cargar tus solicitudes.");
@@ -150,6 +116,44 @@ export function DocenteHistorial() {
   useEffect(() => {
     loadSolicitudes();
   }, [email]);
+
+  const handleGuardarReprogramacion = async () => {
+    if (!selected || !reprogFecha || !reprogHora) return;
+
+    setSavingReprog(true);
+
+    try {
+      const result = await guardarReprogramacion({
+        id: selected.id,
+        reprogramacion_fecha: reprogFecha,
+        reprogramacion_hora: reprogHora,
+        reprogramacion_observacion: reprogObs,
+      });
+
+      if (result.error) {
+        setError(result.error);
+        setSavingReprog(false);
+        return;
+      }
+
+      if (result.data) {
+        setSolicitudes((prev) =>
+          prev.map((item) => (item.id === selected.id ? result.data! : item)),
+        );
+        setSelected(result.data);
+      }
+
+      setOpenReprogramacion(false);
+      setReprogFecha("");
+      setReprogHora("");
+      setReprogObs("");
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo guardar la reprogramación.");
+    } finally {
+      setSavingReprog(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -199,8 +203,7 @@ export function DocenteHistorial() {
                 No se encontraron solicitudes registradas.
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Cuando registre una justificación, aparecerá listada en esta
-                sección.
+                Cuando registre una justificación, aparecerá listada en esta sección.
               </p>
             </div>
           ) : (
@@ -236,7 +239,7 @@ export function DocenteHistorial() {
 
                       <div className="grid gap-2 text-sm text-foreground/90 md:grid-cols-2">
                         <p>
-                          <span className="font-medium">Curso:</span>{" "}
+                          <span className="font-medium">Asignatura:</span>{" "}
                           {item.curso_asignatura}
                         </p>
                         <p>
@@ -265,6 +268,34 @@ export function DocenteHistorial() {
                       ) : (
                         <div className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
                           Aún no hay observaciones administrativas registradas.
+                        </div>
+                      )}
+
+                      {item.estado === "aprobada" && !item.reprogramacion_fecha && (
+                        <div className="pt-1">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setSelected(item);
+                              setOpenReprogramacion(true);
+                            }}
+                          >
+                            Registrar reprogramación
+                          </Button>
+                        </div>
+                      )}
+
+                      {item.reprogramacion_fecha && (
+                        <div className="rounded-lg border bg-primary/5 p-3 text-sm">
+                          <p className="font-medium text-foreground">
+                            Reprogramación registrada
+                          </p>
+                          <p className="mt-1 text-foreground/80">
+                            Fecha: {item.reprogramacion_fecha}
+                          </p>
+                          <p className="text-foreground/80">
+                            Hora: {item.reprogramacion_hora || "—"}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -325,14 +356,11 @@ export function DocenteHistorial() {
                     label="Correo institucional"
                     value={selected.correo_institucional}
                   />
-                  <DetailItem
-                    label="DNI / Código docente"
-                    value={selected.dni_codigo_docente}
-                  />
+                  <DetailItem label="DNI" value={selected.dni_codigo_docente} />
                   <DetailItem label="Celular" value={selected.celular} />
                   <DetailItem label="Escuela" value={selected.facultad_area} />
                   <DetailItem
-                    label="Curso / Asignatura"
+                    label="Asignatura"
                     value={selected.curso_asignatura}
                   />
                   <DetailItem
@@ -343,15 +371,18 @@ export function DocenteHistorial() {
                     label="Hora de la incidencia"
                     value={selected.hora_incidencia}
                   />
-                  <DetailItem label="Turno" value={selected.turno} />
                   <DetailItem label="Modalidad" value={selected.modalidad} />
-                  <DetailItem
-                    label="Aula"
-                    value={selected.sede_aula_enlace || "—"}
-                  />
                   <DetailItem
                     label="Fecha de registro"
                     value={new Date(selected.fecha_registro).toLocaleString("es-PE")}
+                  />
+                  <DetailItem
+                    label="Fecha de revisión"
+                    value={
+                      selected.fecha_revision
+                        ? new Date(selected.fecha_revision).toLocaleString("es-PE")
+                        : "Aún no revisado"
+                    }
                   />
                 </div>
 
@@ -402,15 +433,118 @@ export function DocenteHistorial() {
                       </p>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        Aún no se han registrado observaciones para esta
-                        solicitud.
+                        Aún no se han registrado observaciones para esta solicitud.
                       </p>
                     )}
                   </CardContent>
                 </Card>
+
+                {selected.reprogramacion_fecha && (
+                  <Card className="border-border/60">
+                    <CardContent className="p-5">
+                      <h3 className="mb-3 text-base font-semibold text-foreground">
+                        Reprogramación registrada
+                      </h3>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <DetailItem
+                          label="Fecha de reprogramación"
+                          value={selected.reprogramacion_fecha}
+                        />
+                        <DetailItem
+                          label="Hora de reprogramación"
+                          value={selected.reprogramacion_hora}
+                        />
+                      </div>
+
+                      {selected.reprogramacion_observacion && (
+                        <div className="mt-4">
+                          <p className="mb-1 text-sm font-medium text-foreground">
+                            Observación
+                          </p>
+                          <p className="text-sm text-foreground/80">
+                            {selected.reprogramacion_observacion}
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {selected.estado === "aprobada" && !selected.reprogramacion_fecha && (
+                  <div className="pt-2">
+                    <Button onClick={() => setOpenReprogramacion(true)}>
+                      Registrar reprogramación
+                    </Button>
+                  </div>
+                )}
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={openReprogramacion}
+        onOpenChange={setOpenReprogramacion}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Registrar reprogramación</DialogTitle>
+            <DialogDescription>
+              Complete los datos básicos para reprogramar la clase justificada.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">
+                Fecha de reprogramación
+              </label>
+              <Input
+                type="date"
+                value={reprogFecha}
+                onChange={(e) => setReprogFecha(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">
+                Hora de reprogramación
+              </label>
+              <Input
+                type="time"
+                value={reprogHora}
+                onChange={(e) => setReprogHora(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">
+                Observación
+              </label>
+              <Textarea
+                rows={3}
+                value={reprogObs}
+                onChange={(e) => setReprogObs(e.target.value)}
+                placeholder="Ej: Clase reprogramada para recuperar la sesión pendiente."
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setOpenReprogramacion(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleGuardarReprogramacion}
+                disabled={savingReprog}
+              >
+                {savingReprog ? "Guardando..." : "Guardar reprogramación"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
