@@ -243,7 +243,7 @@ const [form, setForm] = useState({
           tipo_justificacion: form.tipo_justificacion as any,
           fecha_incidencia: fechaIncidencia!.toISOString().split("T")[0],
 hora_incidencia: form.hora_incidencia,
-turno: "no especificado",
+turno: null,
 modalidad: form.modalidad,
 sede_aula_enlace: null,
           cantidad_estudiantes_afectados: null,
