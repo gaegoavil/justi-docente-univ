@@ -77,6 +77,9 @@ export function rowToJustificacion(row: JustificacionRow): Justificacion {
     observaciones_admin: row.observaciones_admin || "",
     fecha_registro: row.fecha_registro,
     fecha_revision: row.fecha_revision || undefined,
+    reprogramacion_fecha: row.reprogramacion_fecha || undefined,
+    reprogramacion_hora: row.reprogramacion_hora || undefined,
+    reprogramacion_observacion: row.reprogramacion_observacion || undefined,
   };
 }
 
@@ -382,5 +385,38 @@ export async function eliminarEvidenciaPorPath(
   } catch (err) {
     console.error("Error al eliminar evidencia:", err);
     return { error: "No se pudo eliminar la evidencia." };
+  }
+}
+
+export async function guardarReprogramacion(params: {
+  id: string;
+  reprogramacion_fecha: string;
+  reprogramacion_hora: string;
+  reprogramacion_observacion?: string;
+}) {
+  if (!isSupabaseConfigured()) {
+    return { data: null, error: "Supabase no está configurado." };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("justificaciones_docentes")
+      .update({
+        reprogramacion_fecha: params.reprogramacion_fecha,
+        reprogramacion_hora: params.reprogramacion_hora,
+        reprogramacion_observacion: params.reprogramacion_observacion || null,
+      })
+      .eq("id", params.id)
+      .select("*")
+      .single();
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+
+    return { data: rowToJustificacion(data), error: null };
+  } catch (err) {
+    console.error("Error al guardar reprogramación:", err);
+    return { data: null, error: "No se pudo guardar la reprogramación." };
   }
 }
