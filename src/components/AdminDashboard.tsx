@@ -1,4 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
+import type { LucideIcon } from "lucide-react";
+import {
+  Search,
+  Eye,
+  RefreshCw,
+  ClipboardList,
+  Clock3,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Loader2,
+  FileText,
+  CalendarDays,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,78 +34,27 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
+
 import {
-  Search,
-  Eye,
-  RefreshCw,
-  ClipboardList,
-  Clock3,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  Loader2,
-  FileText,
-  CalendarDays,
-  User,
-  Mail,
-  BookOpen,
-  Building2,
-} from "lucide-react";
-import { mockJustificaciones, type Justificacion } from "@/lib/justificacion";
-import {
+  mockJustificaciones,
+  type Justificacion,
   getEstadoColor,
   getEstadoLabel,
   getTipoLabel,
   type EstadoJustificacion,
 } from "@/lib/justificacion";
-import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
+import {
+  listarTodasLasJustificaciones,
+  actualizarRevisionJustificacion,
+} from "@/lib/supabase-service";
+import { isSupabaseConfigured } from "@/integrations/supabase/client";
 
 type FiltroEstado = "todos" | EstadoJustificacion;
 type FiltroTipo = "todos" | "tardanza" | "inasistencia";
-
-function mapRowToJustificacion(row: any): Justificacion {
-  return {
-    id: row.id,
-    codigo_seguimiento: row.codigo_seguimiento,
-    nombre_completo: row.nombre_completo,
-    dni_codigo_docente: row.dni_codigo_docente,
-    correo_institucional: row.correo_docente,
-    celular: row.celular,
-    facultad_area: row.facultad_area,
-    curso_asignatura: row.curso_asignatura,
-    tipo_justificacion: row.tipo_justificacion,
-    fecha_incidencia: row.fecha_incidencia,
-    hora_incidencia: row.hora_incidencia,
-    turno: row.turno,
-    modalidad: row.modalidad,
-    sede_aula_enlace: row.sede_aula_enlace || "",
-    descripcion: row.descripcion,
-    motivo_principal: row.descripcion,
-    impacto_academico: "",
-    accion_correctiva: "",
-    cantidad_estudiantes_afectados: undefined,
-    fecha_regularizacion: undefined,
-    declaracion_jurada: false,
-    archivos_adjuntos: row.archivo_url
-      ? [
-          {
-            nombre: row.archivo_path?.split("/").pop() || "evidencia",
-            tipo: row.archivo_tipo || "archivo",
-            tamano: 0,
-            url: row.archivo_url,
-          },
-        ]
-      : [],
-    estado: row.estado,
-    observaciones_admin: row.observaciones_admin || "",
-    fecha_registro: row.fecha_registro,
-    fecha_revision: row.fecha_revision || undefined,
-  };
-}
 
 function StatCard({
   title,
@@ -99,7 +63,7 @@ function StatCard({
 }: {
   title: string;
   value: number;
-  icon: React.ElementType;
+  icon: LucideIcon;
 }) {
   return (
     <Card className="border-border/60 shadow-sm">
@@ -156,23 +120,18 @@ export function AdminDashboard() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("justificaciones_docentes")
-        .select("*")
-        .order("fecha_registro", { ascending: false });
+      const result = await listarTodasLasJustificaciones();
 
-      if (error) {
-        setError(error.message);
-        setSolicitudes(mockJustificaciones);
-        return;
+      if (result.error) {
+        setError(result.error);
+        setSolicitudes([]);
+      } else {
+        setSolicitudes(result.data || []);
       }
-
-      const mapped = (data || []).map(mapRowToJustificacion);
-      setSolicitudes(mapped);
     } catch (err) {
       console.error(err);
       setError("No se pudo cargar la información.");
-      setSolicitudes(mockJustificaciones);
+      setSolicitudes([]);
     } finally {
       setLoading(false);
     }
@@ -184,15 +143,15 @@ export function AdminDashboard() {
 
   const filteredSolicitudes = useMemo(() => {
     return solicitudes.filter((item) => {
-      const searchValue = search.trim().toLowerCase();
+      const term = search.trim().toLowerCase();
 
       const matchesSearch =
-        !searchValue ||
-        item.nombre_completo.toLowerCase().includes(searchValue) ||
-        item.correo_institucional.toLowerCase().includes(searchValue) ||
-        item.codigo_seguimiento.toLowerCase().includes(searchValue) ||
-        item.curso_asignatura.toLowerCase().includes(searchValue) ||
-        item.facultad_area.toLowerCase().includes(searchValue);
+        !term ||
+        item.nombre_completo.toLowerCase().includes(term) ||
+        item.correo_institucional.toLowerCase().includes(term) ||
+        item.codigo_seguimiento.toLowerCase().includes(term) ||
+        item.curso_asignatura.toLowerCase().includes(term) ||
+        item.facultad_area.toLowerCase().includes(term);
 
       const matchesEstado =
         estadoFiltro === "todos" || item.estado === estadoFiltro;
@@ -230,45 +189,37 @@ export function AdminDashboard() {
 
     try {
       if (isSupabaseConfigured()) {
-        const { error } = await supabase
-          .from("justificaciones_docentes")
-          .update({
-            estado: nuevoEstado,
-            observaciones_admin: observaciones || null,
-            fecha_revision: new Date().toISOString(),
-          })
-          .eq("id", selected.id);
+        const result = await actualizarRevisionJustificacion({
+          id: selected.id,
+          estado: nuevoEstado,
+          observaciones_admin: observaciones,
+        });
 
-        if (error) {
-          setError(error.message);
+        if (result.error) {
+          setError(result.error);
           setSaving(false);
           return;
         }
+
+        if (result.data) {
+          setSolicitudes((prev) =>
+            prev.map((item) => (item.id === selected.id ? result.data! : item)),
+          );
+          setSelected(result.data);
+        }
+      } else {
+        const updated: Justificacion = {
+          ...selected,
+          estado: nuevoEstado,
+          observaciones_admin: observaciones,
+          fecha_revision: new Date().toISOString(),
+        };
+
+        setSolicitudes((prev) =>
+          prev.map((item) => (item.id === selected.id ? updated : item)),
+        );
+        setSelected(updated);
       }
-
-      setSolicitudes((prev) =>
-        prev.map((item) =>
-          item.id === selected.id
-            ? {
-                ...item,
-                estado: nuevoEstado,
-                observaciones_admin: observaciones,
-                fecha_revision: new Date().toISOString(),
-              }
-            : item,
-        ),
-      );
-
-      setSelected((prev) =>
-        prev
-          ? {
-              ...prev,
-              estado: nuevoEstado,
-              observaciones_admin: observaciones,
-              fecha_revision: new Date().toISOString(),
-            }
-          : prev,
-      );
 
       setOpen(false);
     } catch (err) {
@@ -281,7 +232,6 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Encabezado */}
       <div className="rounded-2xl border bg-card p-6 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -310,18 +260,13 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      {/* KPIs */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <StatCard
           title="Total de solicitudes"
           value={stats.total}
           icon={ClipboardList}
         />
-        <StatCard
-          title="Pendientes"
-          value={stats.pendientes}
-          icon={Clock3}
-        />
+        <StatCard title="Pendientes" value={stats.pendientes} icon={Clock3} />
         <StatCard
           title="En revisión"
           value={stats.enRevision}
@@ -344,7 +289,6 @@ export function AdminDashboard() {
         />
       </div>
 
-      {/* Filtros */}
       <Card className="border-border/60 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">Filtros de búsqueda</CardTitle>
@@ -355,7 +299,7 @@ export function AdminDashboard() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por docente, correo, código, curso o escuela"
+              placeholder="Buscar por docente, correo, código, asignatura o escuela"
               className="pl-9"
             />
           </div>
@@ -394,14 +338,12 @@ export function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Error */}
       {error && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      {/* Tabla */}
       <Card className="border-border/60 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">Solicitudes registradas</CardTitle>
@@ -466,7 +408,9 @@ export function AdminDashboard() {
                             Ver archivo
                           </a>
                         ) : (
-                          <span className="text-muted-foreground">Sin archivo</span>
+                          <span className="text-muted-foreground">
+                            Sin archivo
+                          </span>
                         )}
                       </td>
                       <td className="px-3 py-4 text-right">
@@ -489,7 +433,6 @@ export function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Modal detalle */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
           {selected && (
@@ -505,7 +448,10 @@ export function AdminDashboard() {
 
               <div className="space-y-6">
                 <div className="flex flex-wrap items-center gap-3">
-                  <Badge variant="outline" className={getEstadoColor(selected.estado)}>
+                  <Badge
+                    variant="outline"
+                    className={getEstadoColor(selected.estado)}
+                  >
                     {getEstadoLabel(selected.estado)}
                   </Badge>
                   <Badge variant="secondary">
@@ -522,14 +468,11 @@ export function AdminDashboard() {
                     label="Correo institucional"
                     value={selected.correo_institucional}
                   />
-                  <DetailItem
-                    label="DNI / Código docente"
-                    value={selected.dni_codigo_docente}
-                  />
+                  <DetailItem label="DNI" value={selected.dni_codigo_docente} />
                   <DetailItem label="Celular" value={selected.celular} />
                   <DetailItem label="Escuela" value={selected.facultad_area} />
                   <DetailItem
-                    label="Curso / Asignatura"
+                    label="Asignatura"
                     value={selected.curso_asignatura}
                   />
                   <DetailItem
@@ -540,15 +483,22 @@ export function AdminDashboard() {
                     label="Hora de la incidencia"
                     value={selected.hora_incidencia}
                   />
-                  <DetailItem label="Turno" value={selected.turno} />
                   <DetailItem label="Modalidad" value={selected.modalidad} />
                   <DetailItem
-                    label="Aula"
-                    value={selected.sede_aula_enlace || "—"}
+                    label="Fecha de registro"
+                    value={new Date(selected.fecha_registro).toLocaleString(
+                      "es-PE",
+                    )}
                   />
                   <DetailItem
-                    label="Fecha de registro"
-                    value={new Date(selected.fecha_registro).toLocaleString("es-PE")}
+                    label="Fecha de revisión"
+                    value={
+                      selected.fecha_revision
+                        ? new Date(selected.fecha_revision).toLocaleString(
+                            "es-PE",
+                          )
+                        : "Aún no revisado"
+                    }
                   />
                 </div>
 
@@ -591,6 +541,57 @@ export function AdminDashboard() {
                 </Card>
 
                 <Card className="border-border/60">
+                  <CardContent className="p-5">
+                    <h4 className="mb-3 text-base font-semibold text-foreground">
+                      Observaciones de coordinación
+                    </h4>
+
+                    {selected.observaciones_admin ? (
+                      <p className="text-sm leading-6 text-foreground/90">
+                        {selected.observaciones_admin}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Aún no se han registrado observaciones para esta
+                        solicitud.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {selected.reprogramacion_fecha && (
+                  <Card className="border-border/60">
+                    <CardContent className="p-5">
+                      <h4 className="mb-3 text-base font-semibold text-foreground">
+                        Reprogramación registrada por el docente
+                      </h4>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <DetailItem
+                          label="Fecha de reprogramación"
+                          value={selected.reprogramacion_fecha}
+                        />
+                        <DetailItem
+                          label="Hora de reprogramación"
+                          value={selected.reprogramacion_hora}
+                        />
+                      </div>
+
+                      {selected.reprogramacion_observacion && (
+                        <div className="mt-4">
+                          <p className="mb-1 text-sm font-medium text-foreground">
+                            Observación
+                          </p>
+                          <p className="text-sm text-foreground/80">
+                            {selected.reprogramacion_observacion}
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Card className="border-border/60">
                   <CardContent className="space-y-4 p-5">
                     <h4 className="text-base font-semibold text-foreground">
                       Revisión administrativa
@@ -612,7 +613,9 @@ export function AdminDashboard() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="pendiente">Pendiente</SelectItem>
-                            <SelectItem value="en_revision">En revisión</SelectItem>
+                            <SelectItem value="en_revision">
+                              En revisión
+                            </SelectItem>
                             <SelectItem value="aprobada">Aprobada</SelectItem>
                             <SelectItem value="observada">Observada</SelectItem>
                             <SelectItem value="rechazada">Rechazada</SelectItem>
@@ -621,17 +624,20 @@ export function AdminDashboard() {
                         </Select>
                       </div>
 
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-foreground">
-                          Última revisión
-                        </label>
-                        <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-foreground">
+                      <div className="rounded-lg border bg-muted/30 p-4">
+                        <div className="flex items-center gap-2">
+                          <CalendarDays className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-medium text-foreground">
+                            Fecha de revisión
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm text-foreground">
                           {selected.fecha_revision
                             ? new Date(selected.fecha_revision).toLocaleString(
                                 "es-PE",
                               )
                             : "Aún no revisado"}
-                        </div>
+                        </p>
                       </div>
                     </div>
 
