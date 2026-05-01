@@ -59,7 +59,9 @@ export function rowToJustificacion(row: JustificacionRow): Justificacion {
     tipo_justificacion: row.tipo_justificacion,
     fecha_incidencia: row.fecha_incidencia,
     hora_incidencia: row.hora_incidencia,
-    turno: row.turno as "mañana" | "tarde" | "noche",
+    turno: row.turno
+      ? (row.turno as "mañana" | "tarde" | "noche")
+      : undefined,
     modalidad: row.modalidad as "presencial" | "virtual" | "semipresencial",
     sede_aula_enlace: row.sede_aula_enlace || "",
     descripcion: row.descripcion,
