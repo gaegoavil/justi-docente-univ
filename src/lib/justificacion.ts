@@ -29,6 +29,9 @@ export interface Justificacion {
   accion_correctiva?: string;
   fecha_regularizacion?: string;
   declaracion_jurada?: boolean;
+  reprogramacion_fecha?: string;
+  reprogramacion_hora?: string;
+  reprogramacion_observacion?: string;
 
   archivos_adjuntos: ArchivoAdjunto[];
   estado:
